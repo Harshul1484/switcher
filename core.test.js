@@ -101,21 +101,28 @@ test('session manager starts a window only where none is running, active account
   put('.claude-profiles/b/.credentials.json', { claudeAiOauth: oauth('B', 'b1', live) });
   put('.claude-profiles/c/.credentials.json', { claudeAiOauth: oauth('C', 'c-tok', live) });
   put('.claude-profiles/e/.credentials.json', { claudeAiOauth: oauth('E', 'e-tok', live) });
-  global.fetch = async (_url, opts) => new Response(JSON.stringify({
-    five_hour: { utilization: 5, resets_at: opts.headers.Authorization === 'Bearer c-tok' ? new Date(Date.now() + 36e5).toISOString() : null },
-  }));
+  put('.claude-profiles/w/.credentials.json', { claudeAiOauth: oauth('W', 'w-tok', live) }); // weekly limit used up
+  put('.claude-profiles/x/.credentials.json', { claudeAiOauth: oauth('X', 'x-tok', live) }); // 100%, but that week already reset
+  const at = (ms) => new Date(Date.now() + ms).toISOString();
+  const byToken = {
+    'c-tok': { five_hour: { utilization: 5, resets_at: at(36e5) } }, // window running
+    'w-tok': { five_hour: { utilization: 0, resets_at: null }, seven_day: { utilization: 100, resets_at: at(864e5) } },
+    'x-tok': { five_hour: { utilization: 0, resets_at: null }, seven_day: { utilization: 100, resets_at: at(-6e4) } },
+  };
+  global.fetch = async (_url, opts) => new Response(JSON.stringify(byToken[opts.headers.Authorization.slice(7)] ?? { five_hour: { utilization: 5, resets_at: null } }));
 
   assert.equal(core.setSessions({ autoStart: false, message: '   ' }).message, 'hi');
   put('.claude-profiles/.switcher.json', { autoStart: true, message: 'start please' });
   await core.keepSessions();
 
-  assert.deepEqual(spawns.map((s) => s.dir), [undefined, path.join(home, '.claude-profiles', 'e')]);
+  const dir = (n) => path.join(home, '.claude-profiles', n);
+  assert.deepEqual(spawns.map((s) => s.dir), [undefined, dir('e'), dir('x')], 'skips c (window running) and w (weekly limit reached)');
   assert.ok(spawns.every((s) => s.cmd === 'claude' && s.input === 'start please' && s.args.includes('haiku')));
-  assert.deepEqual(Object.keys(core.getSessions().status).sort(), ['b', 'e']);
+  assert.deepEqual(Object.keys(core.getSessions().status).sort(), ['b', 'e', 'x']);
   assert.ok(!core.getSessions().status.b.error);
 
   await core.keepSessions(); // cool-down: no second start
-  assert.equal(spawns.length, 2);
+  assert.equal(spawns.length, 3);
 });
 
 test('usage asks at most every 10 minutes and backs off on HTTP 429, keeping the last numbers', fileOnly, async (t) => {

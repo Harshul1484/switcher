@@ -358,8 +358,10 @@ async function keepSessions() {
       // 30-min cool-down per account, so a failing or not-yet-counted start never loops.
       if (!loadProfile(name) || Date.now() - (sessionStatus[name]?.at ?? 0) < 30 * 60e3) continue;
       try {
-        const { session } = await api.usage(name);
+        const { session, week } = await api.usage(name);
         if (session.resetsAt && Date.parse(session.resetsAt) > Date.now()) continue; // a window is already running
+        // Weekly limit used up: a start message can't run until the week resets (unless that reset already passed).
+        if (week.pct >= 100 && !(week.resetsAt && Date.parse(week.resetsAt) <= Date.now())) continue;
         await api.startSession(name);
         sessionStatus[name] = { at: Date.now() };
         if (usageCache[name]) { usageCache[name].at = 0; saveUsageCache(); } // next check shows the new window (still honours a 429 wait)
