@@ -92,6 +92,7 @@ button.link { background: transparent; border-color: transparent; padding: 0 8px
 small.manager { margin-top: 10px; white-space: normal; }
 small.err { color: var(--error); }
 #msg + h2 { margin-top: 32px; }
+.update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 24px 0 0; color: var(--muted); font-size: 13px; }
 
 form { display: grid; gap: 8px; }
 input:not([type=checkbox]) { flex: 1; min-width: 0; height: 40px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--canvas); color: var(--ink); font: 400 16px var(--sans); }

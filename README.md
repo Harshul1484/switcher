@@ -10,6 +10,8 @@ Unofficial. Not affiliated with or endorsed by Anthropic.
 2. Run it. The installer is unsigned, so Windows SmartScreen may warn: choose **More info → Run anyway**. It installs for your user only; no admin rights needed.
 3. You need the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed, with `claude` on your PATH.
 
+From 1.1.0 on, Switcher updates itself: it checks GitHub Releases at launch and every 4 hours, downloads new versions in the background, and offers **Restart to update** (or installs on the next quit). Version 1.0.0 has no updater, so install 1.1.0 once by hand.
+
 ## Use
 
 - **Add Account**: type a name. A terminal opens running `claude auth login` in an isolated profile; sign in there and the account appears in the list.
@@ -38,3 +40,5 @@ npm start      # run the app
 npm test       # core tests (fake home dir, fake network)
 npm run dist   # build the Windows installer into dist/
 ```
+
+To release: bump `version` in `package.json`, commit and push, then run `npm run release` with a GitHub token in `GH_TOKEN` (for example `$env:GH_TOKEN = gh auth token` in PowerShell). It builds the installer and publishes it to a GitHub release together with `latest.yml`, which is what installed copies check for updates.

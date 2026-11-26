@@ -84,6 +84,14 @@ async function loadSessions() {
   loadUsage();
 }
 
+async function loadUpdate() {
+  const u = await run('update');
+  if (u === false) return;
+  const text = u.state === 'ready' ? `Version ${u.version} is ready.`
+    : u.state === 'downloading' ? `Downloading version ${u.version}...` : `Version ${u.current}`;
+  $('update').replaceChildren(text, u.state === 'ready' ? button('Restart to update', () => run('installUpdate'), 'primary') : '');
+}
+
 async function saveSessions() {
   const s = await run('setSessions', { autoStart: $('autoStart').checked, message: $('message').value });
   if (s !== false) { sessions = s; render(); }
@@ -139,7 +147,8 @@ $('add').onsubmit = async (e) => {
 setInterval(() => data.profiles.some((p) => !p.ready) && refresh(), 3000);
 setInterval(render, 60e3); // keep "Resets in ..." countdowns current
 setInterval(() => loadUsage(true), 5 * 60e3);
-setInterval(loadSessions, 30e3);
+setInterval(() => { loadSessions(); loadUpdate(); }, 30e3);
 window.addEventListener('focus', refresh);
 refresh();
 loadSessions();
+loadUpdate();
