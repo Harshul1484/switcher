@@ -1,0 +1,102 @@
+/* Claude tokens from getdesign.md/claude (DESIGN.md). Copernicus/StyreneB are licensed,
+   so this uses the spec's substitutes, bundled locally: Cormorant Garamond (display) and Inter (UI). */
+@import url("node_modules/@fontsource/inter/400.css");
+@import url("node_modules/@fontsource/inter/500.css");
+@import url("node_modules/@fontsource/cormorant-garamond/500.css");
+
+:root {
+  color-scheme: light;
+  --canvas: #faf9f5;
+  --soft: #f5f0e8;
+  --card: #faf9f5;
+  --secondary: #faf9f5;
+  --pill: #efe9de;
+  --ink: #141413;
+  --muted: #6c6a64;
+  --hairline: #e6dfd8;
+  --track: #e6dfd8;
+  --field-line: #8e8b82; /* muted-soft: the hairline is too faint (1.2:1) to find the input by */
+  --primary: #a9583e; /* spec primary-active: spec coral #cc785c under white text is 3.3:1, below WCAG AA */
+  --primary-press: #8f4a34;
+  --focus: #cc785c;
+  --success: #5db872;
+  --error: #c64545;
+  --serif: "Cormorant Garamond", "Tiempos Headline", Garamond, "Times New Roman", serif;
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* The spec has no dark theme; these are its dark-surface and on-dark tokens. */
+  :root {
+    color-scheme: dark;
+    --canvas: #181715;
+    --soft: #181715;
+    --card: #1f1e1b;
+    --secondary: #252320;
+    --pill: #252320;
+    --ink: #faf9f5;
+    --muted: #a09d96;
+    --hairline: #252320;
+    --track: #3d3d3a;
+    --field-line: #6c6a64;
+    --error: #e57373;
+  }
+}
+
+* { box-sizing: border-box; }
+/* Landscape: controls in a sidebar, accounts get the width. Each column scrolls on its own. */
+body { margin: 0; height: 100vh; display: grid; grid-template-columns: 340px 1fr; grid-template-rows: 100vh;
+  background: var(--canvas); color: var(--ink); font: 400 16px/1.55 var(--sans); }
+aside { padding: 32px 24px; overflow-y: auto; border-right: 1px solid var(--hairline); }
+main { padding: 32px; overflow-y: auto; background: var(--soft); }
+@media (max-width: 760px) {
+  body { display: block; height: auto; }
+  aside { border-right: 0; }
+}
+h1 { margin: 0; font: 500 40px/1.1 var(--serif); letter-spacing: -0.02em; }
+#active { margin: 4px 0 32px; color: var(--muted); font-size: 14px; }
+h2 { margin: 0 0 8px; font: 500 12px/1.4 var(--sans); letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+
+ul { list-style: none; margin: 0 0 24px; padding: 0; background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; }
+ul:empty::before { content: "No accounts yet. Add one below."; display: block; padding: 16px; color: var(--muted); font-size: 14px; }
+li { padding: 14px 16px 16px; }
+li + li { border-top: 1px solid var(--hairline); }
+.row { display: flex; align-items: center; gap: 8px; }
+.row > div { flex: 1; min-width: 0; font: 500 16px/1.4 var(--sans); }
+.plan { margin-left: 8px; font: 400 13px var(--sans); color: var(--muted); text-transform: capitalize; }
+small { display: block; font: 400 14px/1.55 var(--sans); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.usage { display: grid; gap: 12px; margin-top: 14px; }
+.usage.err { color: var(--error); white-space: normal; }
+.meter { display: grid; grid-template-columns: minmax(9rem, 15rem) 1fr auto; align-items: center; gap: 12px; font: 400 14px/1.4 var(--sans); }
+.meter small { font-size: 13px; white-space: normal; }
+.pct { min-width: 5.5em; text-align: right; color: var(--muted); white-space: nowrap; }
+progress { width: 100%; height: 6px; appearance: none; border: 0; border-radius: 9999px; overflow: hidden; background: var(--track); }
+progress::-webkit-progress-bar { background: var(--track); }
+progress::-webkit-progress-value { background: var(--focus); border-radius: 9999px; }
+progress.high::-webkit-progress-value { background: var(--error); }
+
+button { height: 40px; padding: 0 20px; border-radius: 8px; border: 1px solid var(--hairline); background: var(--secondary); color: var(--ink); font: 500 14px/1 var(--sans); cursor: pointer; }
+button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.primary:active { background: var(--primary-press); border-color: var(--primary-press); }
+button.link { background: transparent; border-color: transparent; padding: 0 8px; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; background: var(--pill); font: 500 13px/1.4 var(--sans); }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+.panel { display: grid; gap: 8px; margin: 0; padding: 16px; background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; }
+.check { display: flex; align-items: flex-start; gap: 10px; font: 500 16px/1.4 var(--sans); cursor: pointer; }
+.check input { flex: none; width: 16px; height: 16px; margin: 3px 0 0; accent-color: var(--primary); } /* centred on the first line */
+.panel label[for] { margin-top: 8px; font: 500 13px/1.4 var(--sans); color: var(--muted); }
+small.manager { margin-top: 10px; white-space: normal; }
+small.err { color: var(--error); }
+#msg + h2 { margin-top: 32px; }
+
+form { display: grid; gap: 8px; }
+input:not([type=checkbox]) { flex: 1; min-width: 0; height: 40px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--canvas); color: var(--ink); font: 400 16px var(--sans); }
+input::placeholder { color: var(--muted); }
+input:not([type=checkbox]):focus-visible { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px rgb(204 120 92 / 0.15); }
+
+#msg { margin: 16px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+#msg.err { color: var(--error); }

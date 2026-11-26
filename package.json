@@ -1,0 +1,28 @@
+{
+  "name": "switcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Switch between Claude Code accounts with one click",
+  "author": "Switcher",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "local.switcher.app",
+    "productName": "Switcher",
+    "files": ["main.js", "preload.js", "core.js", "renderer.js", "index.html", "styles.css"],
+    "win": { "target": "nsis" },
+    "nsis": { "artifactName": "Switcher-Setup-${version}.${ext}" }
+  },
+  "devDependencies": {
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/inter": "^5.3.0"
+  }
+}

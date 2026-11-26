@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <title>Switcher</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside>
+    <h1>Switcher</h1>
+    <p id="active" aria-live="polite"></p>
+    <form id="add">
+      <input id="name" placeholder="Account name, e.g. work" aria-label="Account name" required pattern="[\w\-]{1,40}">
+      <button class="primary">Add Account</button>
+    </form>
+    <p id="msg" aria-live="polite"></p>
+    <h2>Session manager</h2>
+    <section class="panel">
+      <label class="check"><input type="checkbox" id="autoStart"> Keep a 5-hour session running on every account</label>
+      <label for="message">Starting message</label>
+      <input id="message" maxlength="500" placeholder="hi">
+    </section>
+  </aside>
+  <main>
+    <h2>Accounts</h2>
+    <ul id="list"></ul>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>
