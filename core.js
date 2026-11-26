@@ -199,6 +199,8 @@ function remove(name) {
   if (MAC) kcDelete(serviceFor(profileDir(name)));
   fs.rmSync(profileDir(name), { recursive: true, force: true });
   delete sessionStatus[name];
+  delete usageCache[name];
+  saveUsageCache();
 }
 
 // Sign an existing account in again. The dead login is dropped first, so the card waits for the new one.
@@ -209,6 +211,7 @@ function relogin(name) {
   if (MAC) kcDelete(serviceFor(dir));
   fs.rmSync(path.join(dir, '.credentials.json'), { force: true });
   delete usageCache[name];
+  saveUsageCache();
   openTerminal(dir, 'claude auth login');
 }
 
@@ -236,10 +239,13 @@ async function refresh(oauth) {
   return { ...oauth, accessToken: t.access_token, refreshToken: t.refresh_token || oauth.refreshToken, expiresAt: Date.now() + (t.expires_in || 3600) * 1000 };
 }
 
-// Anthropic rate-limits the usage endpoint per account (HTTP 429): ask at most every 5 minutes, and after a 429
-// wait as long as it says, showing the last numbers meanwhile.
-const USAGE_GAP = 5 * 60e3;
-const usageCache = {}; // name -> { data, at, retryAt }
+// Anthropic rate-limits the usage endpoint per account (HTTP 429). To stay well under it: ask at most every
+// 10 minutes, keep the answers on disk so restarts (and update installs) don't re-ask, reuse Claude Code's own
+// numbers for the active account, and after a 429 wait as long as Anthropic says while showing the last numbers.
+const USAGE_GAP = 10 * 60e3;
+const usageCacheFile = () => path.join(root(), '.usage-cache.json');
+const usageCache = readJson(usageCacheFile()) || {}; // name -> { data, at, retryAt } (usage numbers only, no tokens)
+const saveUsageCache = () => { try { writeAtomic(usageCacheFile(), JSON.stringify(usageCache)); } catch {} };
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 function staleOrThrow(c) {
   if (c.data) return { ...c.data, stale: c.at };
@@ -249,6 +255,7 @@ function staleOrThrow(c) {
 function retryUsage(name) {
   checkName(name);
   if (usageCache[name]) Object.assign(usageCache[name], { at: 0, retryAt: 0 });
+  saveUsageCache();
 }
 
 async function usage(name) {
@@ -261,12 +268,12 @@ async function usage(name) {
   const isActive = keyOf(oauth) && keyOf(active) === keyOf(oauth);
   if (isActive) {
     // Claude Code owns the active login: use its freshest token and never refresh it ourselves (that would log it out).
+    // Claude Code also keeps this account's usage on disk; reuse it when fresh instead of asking Anthropic again.
     oauth = active;
-    if (expired(oauth)) {
-      const c = readJson(activeConfigFile())?.cachedUsageUtilization;
-      if (c?.accountUuid !== oauth.accountUuid) throw new Error('Usage shows once Claude Code runs again.');
-      return shapeUsage(c.utilization, oauth);
-    }
+    const cc = readJson(activeConfigFile())?.cachedUsageUtilization;
+    const ccMine = cc?.accountUuid === oauth.accountUuid && cc.utilization;
+    if (ccMine && (expired(oauth) || Date.now() - cc.fetchedAtMs < USAGE_GAP)) return shapeUsage(cc.utilization, oauth);
+    if (expired(oauth)) throw new Error('Usage shows once Claude Code runs again.');
   }
   const now = Date.now();
   const c = usageCache[name];
@@ -283,11 +290,13 @@ async function usage(name) {
   if (res.status === 401) throw fail('Expired', EXPIRED);
   if (res.status === 429) {
     usageCache[name] = { ...c, retryAt: now + (Number(res.headers.get('retry-after')) || 600) * 1000 };
+    saveUsageCache();
     return staleOrThrow(usageCache[name]);
   }
   if (!res.ok) throw new Error(`Couldn't load usage (HTTP ${res.status}).`);
   const data = shapeUsage(await res.json(), oauth);
   usageCache[name] = { data, at: now };
+  saveUsageCache();
   return data;
 }
 
@@ -353,7 +362,7 @@ async function keepSessions() {
         if (session.resetsAt && Date.parse(session.resetsAt) > Date.now()) continue; // a window is already running
         await api.startSession(name);
         sessionStatus[name] = { at: Date.now() };
-        if (usageCache[name]) usageCache[name].at = 0; // let the next check show the new window (still honours a 429 wait)
+        if (usageCache[name]) { usageCache[name].at = 0; saveUsageCache(); } // next check shows the new window (still honours a 429 wait)
       } catch (e) {
         sessionStatus[name] = { at: Date.now(), error: e.message };
       }

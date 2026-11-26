@@ -27,7 +27,8 @@ app.whenReady().then(() => {
 
   // Updates come from GitHub Releases (latest.yml); a downloaded update also installs on quit.
   if (!app.isPackaged) return;
-  autoUpdater.on('update-available', (i) => (update = { state: 'downloading', version: i.version }));
+  autoUpdater.on('update-available', (i) => (update = { state: 'downloading', version: i.version, percent: 0 }));
+  autoUpdater.on('download-progress', (p) => (update = { ...update, state: 'downloading', percent: p.percent }));
   autoUpdater.on('update-downloaded', (i) => (update = { state: 'ready', version: i.version }));
   autoUpdater.on('error', () => { if (update.state !== 'ready') update = {}; }); // offline: retry next round
   const check = () => autoUpdater.checkForUpdates().catch(() => {});

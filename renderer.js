@@ -55,7 +55,7 @@ function usageBlock(name) {
   const asOf = u.data.stale && new Date(u.data.stale).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return el('div', { className: 'usage' }, meter('Current session', u.data.session, false), meter('This week', u.data.week, true),
     asOf ? el('div', { className: 'problem' },
-      el('small', { textContent: `Anthropic is limiting usage checks; showing numbers from ${asOf}.` }),
+      el('small', { textContent: `Updated ${asOf}` }),
       button('Reconnect', () => reconnect(name, 'Limited'))) : '');
 }
 
@@ -96,11 +96,18 @@ async function loadSessions() {
   loadUsage();
 }
 
+let updateTimer;
 async function loadUpdate() {
   const u = await run('update');
   if (u === false) return;
-  const text = u.state === 'downloading' ? `Version ${u.current} · downloading ${u.version}...` : `Version ${u.current}`;
-  $('update').replaceChildren(text, u.state === 'ready' ? button(`Update ${u.version}`, () => run('installUpdate'), 'primary') : '');
+  const down = u.state === 'downloading';
+  const pct = Math.round(u.percent || 0);
+  $('update').replaceChildren(
+    down ? `Downloading ${u.version} · ${pct}%` : `Version ${u.current}`,
+    down ? el('progress', { max: 100, value: pct, ariaLabel: `Downloading version ${u.version}` }) : '',
+    u.state === 'ready' ? button(`Update ${u.version}`, () => run('installUpdate'), 'primary') : '');
+  clearTimeout(updateTimer);
+  if (down) updateTimer = setTimeout(loadUpdate, 1000); // follow the download closely, then back to the 30s poll
 }
 
 async function saveSessions() {
@@ -123,7 +130,7 @@ async function loadUsage(force = false) {
   if (loadingUsage) return;
   loadingUsage = true;
   for (const { name } of data.profiles.filter((p) => p.ready)) {
-    if (!force && usage[name] && Date.now() - usage[name].at < 5 * 60e3) continue; // core also enforces this gap
+    if (!force && usage[name] && Date.now() - usage[name].at < 10 * 60e3) continue; // core also enforces this gap
     try { usage[name] = { at: Date.now(), data: await window.call('usage', name) }; }
     catch (e) { const { kind, text } = parseError(e); usage[name] = { at: Date.now(), error: text, kind }; }
     render();

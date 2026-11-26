@@ -118,7 +118,7 @@ test('session manager starts a window only where none is running, active account
   assert.equal(spawns.length, 2);
 });
 
-test('usage asks at most every 5 minutes and backs off on HTTP 429, keeping the last numbers', fileOnly, async (t) => {
+test('usage asks at most every 10 minutes and backs off on HTTP 429, keeping the last numbers', fileOnly, async (t) => {
   t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
   put('.claude-profiles/r/.credentials.json', { claudeAiOauth: oauth('R', 'r-tok', { expiresAt: Date.now() + 864e5 }) });
   put('.claude-profiles/q/.credentials.json', { claudeAiOauth: oauth('Q', 'q-tok', { expiresAt: Date.now() + 864e5 }) });
@@ -132,9 +132,9 @@ test('usage asks at most every 5 minutes and backs off on HTTP 429, keeping the 
 
   assert.equal((await core.usage('r')).session.pct, 30);
   await core.usage('r');
-  assert.equal(calls, 1, 'within 5 minutes the last answer is reused');
+  assert.equal(calls, 1, 'within 10 minutes the last answer is reused');
 
-  t.mock.timers.tick(5 * 60e3);
+  t.mock.timers.tick(10 * 60e3);
   status = 429;
   const stale = await core.usage('r');
   assert.equal(calls, 2);
@@ -160,6 +160,29 @@ test('usage asks at most every 5 minutes and backs off on HTTP 429, keeping the 
   status = 200;
   assert.equal((await core.usage('q')).session.pct, 30);
   assert.equal(calls, before + 1, 'Reconnect asks immediately, even inside the Retry-After wait');
+});
+
+test('usage answers survive a restart, and the active account reuses Claude Code\'s own numbers', fileOnly, async () => {
+  put('.claude-profiles/p/.credentials.json', { claudeAiOauth: oauth('P', 'p-tok', { expiresAt: Date.now() + 864e5 }) });
+  let calls = 0;
+  global.fetch = async () => { calls++; return new Response(JSON.stringify({ five_hour: { utilization: 12, resets_at: null } })); };
+  await core.usage('p');
+  assert.equal(calls, 1);
+
+  // A restart (or an update install) loads a fresh copy of the code: it must not ask Anthropic again.
+  delete require.cache[require.resolve('./core')];
+  const restarted = require('./core');
+  assert.equal((await restarted.usage('p')).session.pct, 12);
+  assert.equal(calls, 1, 'answer came from the saved cache');
+  const saved = fs.readFileSync(path.join(home, '.claude-profiles', '.usage-cache.json'), 'utf8');
+  assert.ok(!/tok|refresh|access/i.test(saved), 'the saved cache holds usage numbers only, never tokens');
+
+  // Active account: Claude Code's fresh numbers are reused, no request at all.
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('A2', 'a2-tok', { expiresAt: Date.now() + 864e5 }) });
+  put('.claude.json', { cachedUsageUtilization: { accountUuid: 'A2', fetchedAtMs: Date.now(), utilization: { five_hour: { utilization: 9, resets_at: null } } } });
+  put('.claude-profiles/a2/.credentials.json', { claudeAiOauth: oauth('A2', 'a2-old', { expiresAt: Date.now() + 864e5 }) });
+  assert.equal((await restarted.usage('a2')).session.pct, 9);
+  assert.equal(calls, 1, 'active account served from Claude Code\'s cache');
 });
 
 test('lost connection and dead logins are typed for Reconnect; relogin drops the dead login and reopens sign-in', fileOnly, async () => {
