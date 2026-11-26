@@ -57,10 +57,11 @@ h1 { margin: 0; font: 500 40px/1.1 var(--serif); letter-spacing: -0.02em; }
 #active { margin: 4px 0 32px; color: var(--muted); font-size: 14px; }
 h2 { margin: 0 0 8px; font: 500 12px/1.4 var(--sans); letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 
-ul { list-style: none; margin: 0 0 24px; padding: 0; background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; }
-ul:empty::before { content: "No accounts yet. Add one below."; display: block; padding: 16px; color: var(--muted); font-size: 14px; }
+ul { list-style: none; margin: 0 0 24px; padding: 0; display: grid; gap: 12px; }
+/* One card per account; the empty state is a card too. */
+li, ul:empty::before { background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; }
 li { padding: 14px 16px 16px; }
-li + li { border-top: 1px solid var(--hairline); }
+ul:empty::before { content: "No accounts yet. Add one on the left."; display: block; padding: 16px; color: var(--muted); font-size: 14px; }
 .row { display: flex; align-items: center; gap: 8px; }
 .row > div { flex: 1; min-width: 0; font: 500 16px/1.4 var(--sans); }
 .plan { margin-left: 8px; font: 400 13px var(--sans); color: var(--muted); text-transform: capitalize; }
