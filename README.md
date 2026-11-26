@@ -44,5 +44,5 @@ npm run dist   # build the Windows installer into dist/
 To release:
 
 1. Bump `version` in `package.json`, commit and push.
-2. Run `npm run release` with a GitHub token in `GH_TOKEN` (for example `$env:GH_TOKEN = gh auth token` in PowerShell). It builds the installer and uploads it, its `.blockmap` and `latest.yml` to a **draft** release.
-3. Add notes and publish the draft (on GitHub, or `gh release edit vX.Y.Z --draft=false --notes-file notes.md`). Installed copies pick it up within 4 hours, or at their next launch.
+2. Run `npm run release` (needs the GitHub CLI, logged in). It creates a **draft** release pinned to your pushed commit, builds the installer and uploads it, its `.blockmap` and `latest.yml` there.
+3. Edit the notes and publish the draft (on GitHub, or `gh release edit vX.Y.Z --draft=false --notes-file notes.md`). Installed copies pick it up within 4 hours, or at their next launch.
