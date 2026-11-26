@@ -1,6 +1,11 @@
 const $ = (id) => document.getElementById(id);
 const mod = navigator.userAgent.includes('Mac') ? 'Cmd' : 'Ctrl';
-const clean = (e) => String(e.message).replace(/^Error invoking remote method 'call': (Error: )?/, '');
+// IPC errors arrive as "Error invoking remote method 'call': <Name>: <message>"; Name is Offline/Expired/Error.
+function parseError(e) {
+  const m = String(e.message).match(/^Error invoking remote method 'call': (\w+): ([\s\S]*)$/);
+  return m ? { kind: m[1], text: m[2] } : { kind: 'Error', text: String(e.message) };
+}
+const clean = (e) => parseError(e).text;
 let data = { activeEmail: null, profiles: [] };
 const usage = {}; // name -> { at, data } | { at, error }
 let loadingUsage = false;
@@ -43,13 +48,20 @@ function meter(label, w, weekly) {
 function usageBlock(name) {
   const u = usage[name];
   if (!u) return el('small', { className: 'usage', textContent: 'Loading usage...' });
-  if (u.error) return el('small', { className: 'usage err', textContent: u.error });
-  return el('div', { className: 'usage' }, meter('Current session', u.data.session, false), meter('This week', u.data.week, true));
+  if (u.error) {
+    return el('div', { className: 'usage problem' }, el('small', { className: 'err', textContent: u.error }),
+      ['Offline', 'Expired', 'Limited'].includes(u.kind) ? button('Reconnect', () => reconnect(name, u.kind)) : '');
+  }
+  const asOf = u.data.stale && new Date(u.data.stale).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return el('div', { className: 'usage' }, meter('Current session', u.data.session, false), meter('This week', u.data.week, true),
+    asOf ? el('div', { className: 'problem' },
+      el('small', { textContent: `Anthropic is limiting usage checks; showing numbers from ${asOf}.` }),
+      button('Reconnect', () => reconnect(name, 'Limited'))) : '');
 }
 
 function managerLine(name) {
   const st = sessions.status[name];
-  if (!sessions.autoStart || !st) return '';
+  if (!sessions.autoStart || !st || (st.error && st.error === usage[name]?.error)) return ''; // card already says it
   const time = new Date(st.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return st.error
     ? el('small', { className: 'manager err', textContent: `Session manager couldn't start a session (${time}): ${st.error}` })
@@ -111,9 +123,9 @@ async function loadUsage(force = false) {
   if (loadingUsage) return;
   loadingUsage = true;
   for (const { name } of data.profiles.filter((p) => p.ready)) {
-    if (!force && usage[name] && Date.now() - usage[name].at < 60e3) continue;
+    if (!force && usage[name] && Date.now() - usage[name].at < 5 * 60e3) continue; // core also enforces this gap
     try { usage[name] = { at: Date.now(), data: await window.call('usage', name) }; }
-    catch (e) { usage[name] = { at: Date.now(), error: clean(e) }; }
+    catch (e) { const { kind, text } = parseError(e); usage[name] = { at: Date.now(), error: text, kind }; }
     render();
   }
   loadingUsage = false;
@@ -123,6 +135,16 @@ async function use(name) {
   const r = await run('use', name);
   if (r === false) return;
   say(`Switched to ${name}. Backup saved to ${r.backupDir}\n\nReload VS Code so Claude Code picks it up: ${mod}+Shift+P → "Developer: Reload Window".`);
+  refresh();
+}
+
+// Offline: just try again. Expired: sign that account in again (the card waits for the new login).
+async function reconnect(name, kind) {
+  if (kind === 'Expired') {
+    if ((await run('relogin', name)) === false) return;
+    say(`Sign in to "${name}" again in the terminal window that just opened.`);
+  } else if ((await run('retryUsage', name)) === false) return;
+  delete usage[name];
   refresh();
 }
 

@@ -5,7 +5,7 @@ const core = require('./core');
 
 let update = {}; // { state: 'downloading' | 'ready', version }
 const api = {
-  list: core.list, add: core.startLogin, use: core.use, remove: core.remove, usage: core.usage,
+  list: core.list, add: core.startLogin, use: core.use, remove: core.remove, relogin: core.relogin, usage: core.usage, retryUsage: core.retryUsage,
   sessions: core.getSessions, setSessions: core.setSessions,
   update: () => ({ current: app.getVersion(), ...update }),
   installUpdate: () => autoUpdater.quitAndInstall(true, true), // silent install, then relaunch

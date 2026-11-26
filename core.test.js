@@ -118,6 +118,67 @@ test('session manager starts a window only where none is running, active account
   assert.equal(spawns.length, 2);
 });
 
+test('usage asks at most every 5 minutes and backs off on HTTP 429, keeping the last numbers', fileOnly, async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  put('.claude-profiles/r/.credentials.json', { claudeAiOauth: oauth('R', 'r-tok', { expiresAt: Date.now() + 864e5 }) });
+  put('.claude-profiles/q/.credentials.json', { claudeAiOauth: oauth('Q', 'q-tok', { expiresAt: Date.now() + 864e5 }) });
+  let calls = 0, status = 200;
+  global.fetch = async () => {
+    calls++;
+    return status === 200
+      ? new Response(JSON.stringify({ five_hour: { utilization: 30, resets_at: null } }))
+      : new Response('{}', { status, headers: { 'retry-after': '120' } });
+  };
+
+  assert.equal((await core.usage('r')).session.pct, 30);
+  await core.usage('r');
+  assert.equal(calls, 1, 'within 5 minutes the last answer is reused');
+
+  t.mock.timers.tick(5 * 60e3);
+  status = 429;
+  const stale = await core.usage('r');
+  assert.equal(calls, 2);
+  assert.equal(stale.session.pct, 30, 'a 429 keeps the last numbers');
+  assert.ok(stale.stale);
+
+  t.mock.timers.tick(60e3);
+  await core.usage('r');
+  assert.equal(calls, 2, 'no request while Retry-After is pending');
+
+  t.mock.timers.tick(61e3);
+  status = 200;
+  await core.usage('r');
+  assert.equal(calls, 3, 'asks again once the wait is over');
+
+  status = 429;
+  await assert.rejects(core.usage('q'), (e) => e.name === 'Limited' && /limiting usage checks/.test(e.message),
+    'no numbers yet: clear, typed message instead of "HTTP 429"');
+
+  // Reconnect: forget the wait and ask right away.
+  const before = calls;
+  core.retryUsage('q');
+  status = 200;
+  assert.equal((await core.usage('q')).session.pct, 30);
+  assert.equal(calls, before + 1, 'Reconnect asks immediately, even inside the Retry-After wait');
+});
+
+test('lost connection and dead logins are typed for Reconnect; relogin drops the dead login and reopens sign-in', fileOnly, async () => {
+  const dir = path.join(home, '.claude-profiles', 'z');
+  put('.claude-profiles/z/.credentials.json', { claudeAiOauth: oauth('Z', 'z-tok', { expiresAt: Date.now() + 864e5 }) });
+  global.fetch = async () => { throw new TypeError('fetch failed'); };
+  await assert.rejects(core.usage('z'), (e) => e.name === 'Offline' && /Couldn't reach Anthropic/.test(e.message));
+  global.fetch = async () => new Response('{}', { status: 401 });
+  await assert.rejects(core.usage('z'), (e) => e.name === 'Expired');
+
+  const spawned = [];
+  require('child_process').spawn = (...args) => { spawned.push(args); return { unref() {} }; };
+  await core.relogin('z');
+  assert.ok(!fs.existsSync(path.join(dir, '.credentials.json')), 'dead login removed, card shows "waiting"');
+  const launched = JSON.stringify(spawned[0]);
+  assert.ok(launched.includes('claude auth login') && launched.includes(JSON.stringify(dir).slice(1, -1)), 'sign-in opened for this profile');
+  await assert.rejects(core.relogin('nope'), /doesn't exist/);
+});
+
 test('a rejected refresh leaves the saved login untouched', fileOnly, async () => {
   put('.claude-profiles/d/.credentials.json', { claudeAiOauth: oauth('D', 'd-old', { expiresAt: 0 }) });
   global.fetch = async () => new Response('{}', { status: 400 });

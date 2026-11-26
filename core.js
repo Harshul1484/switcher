@@ -188,21 +188,40 @@ function use(name) {
   return { backupDir };
 }
 
+function kcDelete(service) {
+  for (const a of KC_ACCOUNTS) {
+    try { cp.execFileSync('security', ['delete-generic-password', '-a', a, '-s', service], { stdio: 'ignore' }); } catch {}
+  }
+}
+
 function remove(name) {
   checkName(name);
-  if (MAC) for (const a of KC_ACCOUNTS) {
-    try { cp.execFileSync('security', ['delete-generic-password', '-a', a, '-s', serviceFor(profileDir(name))], { stdio: 'ignore' }); } catch {}
-  }
+  if (MAC) kcDelete(serviceFor(profileDir(name)));
   fs.rmSync(profileDir(name), { recursive: true, force: true });
   delete sessionStatus[name];
 }
 
+// Sign an existing account in again. The dead login is dropped first, so the card waits for the new one.
+function relogin(name) {
+  checkName(name);
+  const dir = profileDir(name);
+  if (!fs.existsSync(dir)) throw new Error(`"${name}" doesn't exist.`);
+  if (MAC) kcDelete(serviceFor(dir));
+  fs.rmSync(path.join(dir, '.credentials.json'), { force: true });
+  delete usageCache[name];
+  openTerminal(dir, 'claude auth login');
+}
+
 const expired = (oauth) => oauth.expiresAt < Date.now() + 60e3;
+// Typed failures: the name survives IPC ("Offline: ...", "Expired: ...") so the UI can offer the right Reconnect.
+const fail = (name, message) => Object.assign(new Error(message), { name });
+const EXPIRED = 'Login expired. Reconnect to sign in again.';
+const call = (url, opts) => fetch(url, opts).catch(() => { throw fail('Offline', "Couldn't reach Anthropic. Check your internet connection."); });
 const usageWindow = (w) => ({ pct: w?.utilization ?? 0, resetsAt: w?.resets_at ?? null });
 const shapeUsage = (u, oauth) => ({ plan: oauth.subscriptionType || '', session: usageWindow(u?.five_hour), week: usageWindow(u?.seven_day) });
 
 async function refresh(oauth) {
-  const res = await fetch(TOKEN_URL, {
+  const res = await call(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(30e3),
@@ -211,10 +230,25 @@ async function refresh(oauth) {
       ...(oauth.scopes?.length && { scope: oauth.scopes.join(' ') }),
     }),
   });
-  if (res.status === 400 || res.status === 401) throw new Error('Login expired. Remove this account and add it again.');
+  if (res.status === 400 || res.status === 401) throw fail('Expired', EXPIRED);
   const t = res.ok ? await res.json() : {};
   if (!t.access_token) throw new Error(`Couldn't refresh login (HTTP ${res.status}).`);
   return { ...oauth, accessToken: t.access_token, refreshToken: t.refresh_token || oauth.refreshToken, expiresAt: Date.now() + (t.expires_in || 3600) * 1000 };
+}
+
+// Anthropic rate-limits the usage endpoint per account (HTTP 429): ask at most every 5 minutes, and after a 429
+// wait as long as it says, showing the last numbers meanwhile.
+const USAGE_GAP = 5 * 60e3;
+const usageCache = {}; // name -> { data, at, retryAt }
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function staleOrThrow(c) {
+  if (c.data) return { ...c.data, stale: c.at };
+  throw fail('Limited', `Anthropic is limiting usage checks for this account. Next try at ${clock(c.retryAt)}.`);
+}
+// Reconnect for a lost connection or a rate limit: forget our wait so the next check asks Anthropic right away.
+function retryUsage(name) {
+  checkName(name);
+  if (usageCache[name]) Object.assign(usageCache[name], { at: 0, retryAt: 0 });
 }
 
 async function usage(name) {
@@ -224,7 +258,8 @@ async function usage(name) {
   let oauth = saved?.claudeAiOauth;
   if (!oauth) throw new Error(`"${name}" has no saved login yet.`);
   const active = activeOauth();
-  if (keyOf(oauth) && keyOf(active) === keyOf(oauth)) {
+  const isActive = keyOf(oauth) && keyOf(active) === keyOf(oauth);
+  if (isActive) {
     // Claude Code owns the active login: use its freshest token and never refresh it ourselves (that would log it out).
     oauth = active;
     if (expired(oauth)) {
@@ -232,16 +267,28 @@ async function usage(name) {
       if (c?.accountUuid !== oauth.accountUuid) throw new Error('Usage shows once Claude Code runs again.');
       return shapeUsage(c.utilization, oauth);
     }
-  } else if (expired(oauth)) {
+  }
+  const now = Date.now();
+  const c = usageCache[name];
+  if (c?.data && now - c.at < USAGE_GAP) return c.data;
+  if (c?.retryAt > now) return staleOrThrow(c);
+  if (!isActive && expired(oauth)) {
     oauth = await refresh(oauth);
     writeAtomic(f, JSON.stringify({ ...saved, claudeAiOauth: oauth })); // the old refresh token is now dead; save at once
   }
-  const res = await fetch(USAGE_URL, {
+  const res = await call(USAGE_URL, {
     headers: { Authorization: `Bearer ${oauth.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20' },
     signal: AbortSignal.timeout(15e3),
   });
+  if (res.status === 401) throw fail('Expired', EXPIRED);
+  if (res.status === 429) {
+    usageCache[name] = { ...c, retryAt: now + (Number(res.headers.get('retry-after')) || 600) * 1000 };
+    return staleOrThrow(usageCache[name]);
+  }
   if (!res.ok) throw new Error(`Couldn't load usage (HTTP ${res.status}).`);
-  return shapeUsage(await res.json(), oauth);
+  const data = shapeUsage(await res.json(), oauth);
+  usageCache[name] = { data, at: now };
+  return data;
 }
 
 // --- session manager: keeps a 5-hour window running on every account ---
@@ -306,6 +353,7 @@ async function keepSessions() {
         if (session.resetsAt && Date.parse(session.resetsAt) > Date.now()) continue; // a window is already running
         await api.startSession(name);
         sessionStatus[name] = { at: Date.now() };
+        if (usageCache[name]) usageCache[name].at = 0; // let the next check show the new window (still honours a 429 wait)
       } catch (e) {
         sessionStatus[name] = { at: Date.now(), error: e.message };
       }
@@ -318,6 +366,6 @@ async function keepSessions() {
 // One token-touching operation at a time, so a refresh never races a switch copying the same profile.
 let lock = Promise.resolve();
 const serial = (fn) => (arg) => (lock = lock.then(() => fn(arg), () => fn(arg)));
-const api = { use: serial(use), remove: serial(remove), usage: serial(usage), startSession: serial(startSession) };
+const api = { use: serial(use), remove: serial(remove), relogin: serial(relogin), usage: serial(usage), startSession: serial(startSession) };
 
-module.exports = { list, startLogin, ...api, getSessions, setSessions, keepSessions };
+module.exports = { list, startLogin, ...api, retryUsage, getSessions, setSessions, keepSessions };

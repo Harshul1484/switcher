@@ -68,7 +68,8 @@ ul:empty::before { content: "No accounts yet. Add one on the left."; display: bl
 small { display: block; font: 400 14px/1.55 var(--sans); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .usage { display: grid; gap: 12px; margin-top: 14px; }
-.usage.err { color: var(--error); white-space: normal; }
+.problem { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.problem small { white-space: normal; }
 .meter { display: grid; grid-template-columns: minmax(9rem, 15rem) 1fr auto; align-items: center; gap: 12px; font: 400 14px/1.4 var(--sans); }
 .meter small { font-size: 13px; white-space: normal; }
 .pct { min-width: 5.5em; text-align: right; color: var(--muted); white-space: nowrap; }
