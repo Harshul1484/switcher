@@ -46,9 +46,14 @@ test('refuses to write when current credentials are unreadable', fileOnly, async
 });
 
 test('rejects unsafe names and unknown profiles', async () => {
-  await assert.rejects(core.use('../x'), /Name must be/);
+  for (const bad of ['../x', '..', '.hidden', 'trailing.', 'a/b', 'a\\b', 'nul', 'COM1.txt', 'x'.repeat(65), '']) {
+    await assert.rejects(core.use(bad), /Name must be/, bad);
+  }
   await assert.rejects(core.remove('..'), /Name must be/);
-  await assert.rejects(core.use('nope'), /no saved login/);
+  // Emails and the old allowed names pass validation (and then fail only because no such profile exists).
+  for (const ok of ['nope', 'harshul@example.in', 'first.last+work@mail.co', '_legacy', 'my-account_2']) {
+    await assert.rejects(core.use(ok), /no saved login/, ok);
+  }
 });
 
 test('usage refreshes an expired inactive login and saves the new tokens; never refreshes the active one', fileOnly, async () => {

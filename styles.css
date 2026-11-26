@@ -47,7 +47,7 @@
 /* Landscape: controls in a sidebar, accounts get the width. Each column scrolls on its own. */
 body { margin: 0; height: 100vh; display: grid; grid-template-columns: 340px 1fr; grid-template-rows: 100vh;
   background: var(--canvas); color: var(--ink); font: 400 16px/1.55 var(--sans); }
-aside { padding: 32px 24px; overflow-y: auto; border-right: 1px solid var(--hairline); }
+aside { display: flex; flex-direction: column; padding: 32px 24px; overflow-y: auto; border-right: 1px solid var(--hairline); }
 main { padding: 32px; overflow-y: auto; background: var(--soft); }
 @media (max-width: 760px) {
   body { display: block; height: auto; }
@@ -92,7 +92,7 @@ button.link { background: transparent; border-color: transparent; padding: 0 8px
 small.manager { margin-top: 10px; white-space: normal; }
 small.err { color: var(--error); }
 #msg + h2 { margin-top: 32px; }
-.update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 24px 0 0; color: var(--muted); font-size: 13px; }
+.update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: auto 0 0; padding-top: 24px; color: var(--muted); font-size: 13px; } /* pinned to the sidebar's bottom */
 
 form { display: grid; gap: 8px; }
 input:not([type=checkbox]) { flex: 1; min-width: 0; height: 40px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--canvas); color: var(--ink); font: 400 16px var(--sans); }

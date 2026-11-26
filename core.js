@@ -14,7 +14,9 @@ const crypto = require('crypto');
 const cp = require('child_process');
 
 const MAC = process.platform === 'darwin';
-const NAME_RE = /^[\w-]{1,40}$/;
+// Becomes a folder name: no path separators, no leading dot (hidden/reserved), no trailing dot (Windows drops it).
+const NAME_RE = /^[\w-](?:[\w.@+-]{0,62}[\w@+-])?$/;
+const WIN_RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i;
 // Claude Code's production OAuth config (from its 2.1.332 binary).
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage?skip_spend=1';
 const TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
@@ -36,7 +38,9 @@ function parseObj(raw, what) {
 }
 
 function checkName(name) {
-  if (!NAME_RE.test(name || '')) throw new Error('Name must be 1-40 letters, digits, "-" or "_".');
+  if (!NAME_RE.test(name || '') || WIN_RESERVED.test(name)) {
+    throw new Error('Name must be 1-64 letters, numbers or . _ - @ + (an email works), not starting or ending with a dot.');
+  }
 }
 
 function writeAtomic(f, data) {

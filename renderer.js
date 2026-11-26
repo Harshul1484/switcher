@@ -87,9 +87,8 @@ async function loadSessions() {
 async function loadUpdate() {
   const u = await run('update');
   if (u === false) return;
-  const text = u.state === 'ready' ? `Version ${u.version} is ready.`
-    : u.state === 'downloading' ? `Downloading version ${u.version}...` : `Version ${u.current}`;
-  $('update').replaceChildren(text, u.state === 'ready' ? button('Restart to update', () => run('installUpdate'), 'primary') : '');
+  const text = u.state === 'downloading' ? `Version ${u.current} · downloading ${u.version}...` : `Version ${u.current}`;
+  $('update').replaceChildren(text, u.state === 'ready' ? button(`Update ${u.version}`, () => run('installUpdate'), 'primary') : '');
 }
 
 async function saveSessions() {
