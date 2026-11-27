@@ -33,7 +33,8 @@ const labelOf = (p) => p.label || p.name;
 const pretty = (acc) => acc.split('+').map((k) => ({ CommandOrControl: MAC ? 'Cmd' : 'Ctrl', Alt: MAC ? 'Option' : 'Alt' }[k] || k)).join('+');
 
 let win, quick, tray, trayPop, trayClosedAt = 0, quitting = false;
-let update = {}; // { state: 'downloading' | 'ready', version }
+let update = {}; // { state: 'checking' | 'latest' | 'error' | 'downloading' | 'ready', version, percent }
+const BUSY = ['checking', 'downloading', 'ready']; // no new check while one of these is under way
 
 // --- windows ---
 function createWindow(show) {
@@ -251,6 +252,14 @@ const api = {
   quit: () => { quitting = true; app.quit(); },
   showMain: showWindow,
   update: () => ({ current: app.getVersion(), ...update }),
+  checkUpdate: () => { // Settings → Check for updates
+    if (!app.isPackaged) return { current: app.getVersion(), state: 'dev' };
+    if (!BUSY.includes(update.state)) {
+      update = { state: 'checking' };
+      autoUpdater.checkForUpdates().catch(() => { if (update.state === 'checking') update = { state: 'error' }; });
+    }
+    return { current: app.getVersion(), ...update };
+  },
   installUpdate: () => (LINK_ONLY ? shell.openExternal(RELEASE_PAGE + update.version) : autoUpdater.quitAndInstall(true, true)), // silent install, then relaunch
 };
 ipcMain.handle('call', (_e, fn, arg) => {
@@ -292,12 +301,14 @@ else {
     autoUpdater.on('download-progress', (p) => (update = { ...update, state: 'downloading', percent: p.percent }));
     autoUpdater.on('update-downloaded', (i) => {
       update = { state: 'ready', version: i.version };
-      notify(`Switcher ${i.version} is ready. It installs when you quit.`);
+      notify(`Switcher ${i.version} is ready. Restart to update.`);
     });
-    autoUpdater.on('error', () => { if (update.state !== 'ready') update = {}; }); // offline: retry next round
-    const check = () => autoUpdater.checkForUpdates().catch(() => {});
+    autoUpdater.on('update-not-available', () => (update = { state: 'latest' }));
+    autoUpdater.on('error', () => { if (update.state !== 'ready') update = update.state === 'checking' ? { state: 'error' } : {}; }); // offline: retry next round
+    // Like other desktop apps: check at start and every hour, download in the background, then offer "Restart to update".
+    const check = () => { if (!BUSY.includes(update.state)) autoUpdater.checkForUpdates().catch(() => {}); };
     check();
-    setInterval(check, 4 * 3600e3);
+    setInterval(check, 3600e3);
   });
 }
 app.on('before-quit', () => { quitting = true; }); // also covers Cmd+Q and quitAndInstall

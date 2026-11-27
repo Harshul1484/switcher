@@ -222,6 +222,8 @@ small.manager { margin-top: 10px; white-space: normal; }
 small.err { color: var(--error); }
 .update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0; padding: 0 10px; color: var(--muted); font-size: 13px; }
 .update progress { flex-basis: 100%; } /* download bar on its own line under the text */
+.update:empty { display: none; }
+.setting-label { font: 400 15px/1.4 var(--sans); }
 
 form { display: grid; gap: 8px; }
 input:not([type=checkbox]) { flex: 1; min-width: 0; height: 40px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--canvas); color: var(--ink); font: 400 16px var(--sans); }

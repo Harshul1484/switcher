@@ -188,19 +188,36 @@ async function loadSessions() {
   loadUsage();
 }
 
-let updateTimer;
+let updateTimer, updateState = {};
 async function loadUpdate() {
   const u = await run('update');
-  if (u === false) return;
-  const down = u.state === 'downloading';
-  const pct = Math.round(u.percent || 0);
-  $('update').replaceChildren(
-    down ? `Downloading ${u.version} · ${pct}%` : `Version ${u.current}`,
-    down ? el('progress', { max: 100, value: pct, ariaLabel: `Downloading version ${u.version}` }) : '',
-    u.state === 'ready' ? button(`Update ${u.version}`, () => run('installUpdate'), 'primary') : '');
-  clearTimeout(updateTimer);
-  if (down) updateTimer = setTimeout(loadUpdate, 1000); // follow the download closely, then back to the 30s poll
+  if (u !== false) showUpdate(u);
 }
+function showUpdate(u) {
+  updateState = u;
+  const down = u.state === 'downloading', ready = u.state === 'ready';
+  const pct = Math.round(u.percent || 0);
+  // Sidebar: only while an update downloads or waits for a restart.
+  $('update').replaceChildren(
+    down ? `Downloading ${u.version} · ${pct}%` : '',
+    down ? el('progress', { max: 100, value: pct, ariaLabel: `Downloading version ${u.version}` }) : '',
+    ready ? button('Restart to update', () => run('installUpdate'), 'primary') : '');
+  // Settings → General: the version and a manual check.
+  $('version').textContent = u.current || '';
+  $('updateHint').textContent = { checking: 'Checking…', latest: "You're up to date.", error: "Couldn't check. Try again.",
+    dev: 'Works in the installed app.', downloading: `Downloading ${u.version} · ${pct}%`, ready: `${u.version} is ready.` }[u.state] || '';
+  $('updateHint').classList.toggle('err', u.state === 'error');
+  $('checkUpdate').textContent = ready ? 'Restart to update' : 'Check for updates';
+  $('checkUpdate').className = ready ? 'primary' : '';
+  $('checkUpdate').disabled = ['checking', 'downloading', 'dev'].includes(u.state);
+  clearTimeout(updateTimer);
+  if (down || u.state === 'checking') updateTimer = setTimeout(loadUpdate, 1000); // follow closely, then back to the 30s poll
+}
+$('checkUpdate').onclick = async () => {
+  if (updateState.state === 'ready') return run('installUpdate');
+  const u = await run('checkUpdate');
+  if (u !== false) showUpdate(u);
+};
 
 async function saveSessions() {
   const s = await run('setSessions', { autoStart: $('autoStart').checked, message: $('message').value });
