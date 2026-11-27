@@ -18,7 +18,7 @@ All colours are CSS custom properties on `:root`, redefined for dark mode under 
 |---|---|---|---|
 | `--canvas` | `#faf9f5` | `#181715` | Page and sidebar background, input fill |
 | `--soft` | `#f5f0e8` | `#181715` | Accounts area background |
-| `--card` | `#faf9f5` | `#1f1e1b` | Account cards, the session manager panel |
+| `--card` | `#faf9f5` | `#1f1e1b` | Account cards, menus, the settings dialog |
 | `--secondary` | `#faf9f5` | `#252320` | Secondary buttons (**Use**, **Reconnect**) |
 | `--pill` | `#efe9de` | `#252320` | The **Active** badge |
 | `--ink` | `#141413` | `#faf9f5` | Primary text |
@@ -60,11 +60,11 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 
 - **Spacing** follows a 4px rhythm: 8, 12, 16, 24 and 32px. Cards have 14–16px padding; columns 24–32px.
 - **Radius**: 8px for buttons and inputs, 12px for cards and panels, fully round (`9999px`) for badges, usage bars and the scrollbar.
-- **Borders**: 1px. Shadows only appear as the input focus glow and under the floating card menu (`0 8px 24px` ink at 14%), which needs to lift off the card below it.
+- **Borders**: 1px. Shadows only appear as the input focus glow and under things that float: the card menu (`0 8px 24px` ink at 14%) and the settings dialog (`0 16px 48px` ink at 24%).
 
 ## Layout
 
-- **Sidebar** (340px, left): title, active account, **Add Account**, session manager, settings, and the version and update area pinned to the bottom.
+- **Sidebar** (340px, left): title, active account and **Add Account**; **Settings** and the version and update area are pinned to the bottom.
 - **Accounts** (the rest): one card per account, 12px apart.
 - Each column scrolls on its own. Under 760px wide, it becomes one column.
 
@@ -82,7 +82,9 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 | **Most left chip** | Like the Active badge, but transparent with a 1px coral outline and a coral dot. Marks the account with the most usage left |
 | **Colour dot** | 10px circle before the account name, filled with a `--label-*` token; absent when no label is set |
 | **Card menu** | Opened by the **⋯** link button: `--card` fill, hairline border, 12px radius, the menu shadow. Items are 34px rows with `--pill` on hover; **Remove** is `--error` |
-| **Panel** | Like a card; holds the session manager and the collapsible settings |
+| **Settings dialog** | Modal, up to 860×560, 16px radius, `--card` fill, backdrop ink at 45%. Header: "Settings" (17px / 500) and a close button. Left: a 220px section list on `--soft`, 38px items, the current one on `--pill`. Right: the section title (16px / 500), then rows of label (15px; optional 13px `--muted` line under it) on the left and the control on the right, hairlines between rows. Opens from the sidebar or Ctrl/Cmd+,; Esc or a backdrop click closes it. Under 640px the section list becomes a row on top |
+| **Switch** | A checkbox with `role="switch"`: 38×22 round track, `--field-line` when off, `--primary` when on, 16px white knob |
+| **Icons** | 18px line icons, 1.75 stroke, `currentColor`, round caps. Only in navigation: the Settings button and the dialog's section list |
 | **Quick switcher** | Frameless 560×440 window: a 48px search field, rows with dot, name, email and "Session N% · Week N%", the selected row on `--pill`, and a 12px keyboard hint footer |
 | **Status line** | 14px text under the form; `--error` for errors |
 | **Scrollbar** | 12px slim thumb, round, no arrows; darker on hover, coral while dragging |
@@ -97,5 +99,5 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 ## Do and don't
 
 - **Do** use the tokens, check light and dark mode, and keep one primary button per screen.
-- **Don't** add new colours, shadows, gradients, icons or fonts, or use coral as a background for large areas.
+- **Don't** add new colours, shadows, gradients or fonts, use icons outside navigation, or use coral as a background for large areas.
 - **Don't** imitate Anthropic's logos or marks. Switcher is unofficial.
