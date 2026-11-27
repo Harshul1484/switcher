@@ -311,20 +311,20 @@ async function use(name) {
   const r = await run('use', name);
   if (r === false) return;
   const p = data.profiles.find((x) => x.name === name);
-  say(`Switched to ${p ? labelOf(p) : name}. Backup saved to ${r.backupDir}\n\nReload VS Code so Claude Code picks it up: ${mod}+Shift+P → "Developer: Reload Window".`);
+  say(`Now using ${p ? labelOf(p) : name}. Reload VS Code to apply.`);
   refresh();
 }
 
 // Linux has no standard terminal app, so also show the sign-in command for running by hand.
 const LINUX = navigator.userAgent.includes('Linux');
-const orRunIt = (r) => (LINUX && r?.manual ? `\n\nNo terminal window? Run this in a terminal:\n${r.manual}` : '');
+const orRunIt = (r) => (LINUX && r?.manual ? `\nNo terminal? Run: ${r.manual}` : '');
 
 // Offline: just try again. Expired: sign that account in again (the card waits for the new login).
 async function reconnect(name, kind) {
   if (kind === 'Expired') {
     const r = await run('relogin', name);
     if (r === false) return;
-    say(`Sign in to "${name}" again in the terminal window that just opened.${orRunIt(r)}`);
+    say(`Sign in to ${name} again in the terminal that opened.${orRunIt(r)}`);
   } else if ((await run('retryUsage', name)) === false) return;
   delete usage[name];
   refresh();
@@ -345,7 +345,7 @@ $('add').onsubmit = async (e) => {
   const r = await run('add', name);
   if (r !== false) {
     $('name').value = '';
-    say(`Finish signing in to "${name}" in the terminal window that just opened.${orRunIt(r)}`);
+    say(`Sign in to ${name} in the terminal that opened.${orRunIt(r)}`);
   }
   refresh();
 };
