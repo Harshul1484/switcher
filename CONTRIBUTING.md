@@ -41,7 +41,7 @@ Read [AGENTS.md](AGENTS.md) for a map of the code and the invariants it must kee
 - Logic changes in `core.js` come with a test in `core.test.js`, and `npm test` passes.
 - No new dependencies without agreeing on it in an issue first.
 - Keep it working on Windows, macOS and Linux. Platform-specific code needs a path for each system.
-- Don't change `version` in `package.json`; the release workflow does that.
+- Don't change `version` in `package.json`; release versions come from tags set by the release workflow.
 - Write clear commit messages that say what changed and why.
 
 **UI**
@@ -53,6 +53,10 @@ Read [AGENTS.md](AGENTS.md) for a map of the code and the invariants it must kee
 
 - Follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 - Report security problems privately as described in [SECURITY.md](SECURITY.md), never in a public issue.
+
+## License
+
+Switcher is [MIT licensed](LICENSE). By contributing, you agree that your contribution is licensed under the same terms.
 
 ## Reporting bugs and ideas
 

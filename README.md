@@ -8,6 +8,7 @@ See every account's session and weekly usage, and keep a 5-hour window running o
 [![Latest release](https://img.shields.io/github/v/release/Harshul1484/switcher?style=flat-square&color=cc785c&labelColor=181715&label=release)](https://github.com/Harshul1484/switcher/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/Harshul1484/switcher/release.yml?style=flat-square&labelColor=181715&label=build)](https://github.com/Harshul1484/switcher/actions/workflows/release.yml)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-cc785c?style=flat-square&labelColor=181715)](#install)
+[![License: MIT](https://img.shields.io/badge/license-MIT-cc785c?style=flat-square&labelColor=181715)](LICENSE)
 
 <br>
 
@@ -117,10 +118,14 @@ npm test       # core tests (fake home dir, fake network)
 npm run dist   # build installers for your system into dist/
 ```
 
-Pushes to any branch build and test on Windows, macOS and Linux ([ci.yml](.github/workflows/ci.yml)). Every push to `main` is tested, gets its version bumped, and is released for all three systems once every build succeeds ([release.yml](.github/workflows/release.yml)).
+Pushes to any branch build and test on Windows, macOS and Linux ([ci.yml](.github/workflows/ci.yml)). Every push to `main` is tested, tagged with the next version, and released for all three systems once every build succeeds ([release.yml](.github/workflows/release.yml)).
 
 ## Caveats
 
 - Built against Claude Code 2.1.332. It relies on Claude Code's file formats and undocumented endpoints, which can change.
 - Used day to day on Windows. Linux passes the full test suite in CI; the macOS Keychain switching isn't covered by automated tests yet.
 - Use it with your own accounts and within Anthropic's terms.
+
+## License
+
+[MIT](LICENSE)

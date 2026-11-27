@@ -4,6 +4,7 @@
   "private": true,
   "description": "Switch between Claude Code accounts with one click",
   "author": "Switcher",
+  "license": "MIT",
   "homepage": "https://github.com/Harshul1484/switcher",
   "main": "main.js",
   "scripts": {

@@ -56,8 +56,8 @@ npm run dist   # installers for the current OS into dist/
 - Platform code branches on `process.platform` and must handle `win32`, `darwin` and `linux`.
 - UI uses the tokens in `styles.css`; check light and dark mode.
 - Comments explain *why*, in one line.
-- Don't edit `version` in `package.json`; `release.yml` bumps it on every push to `main`.
+- Don't edit `version` in `package.json` or push version commits: release versions come from the `v*` tags, and `release.yml` stamps the version into each build.
 
 ## Releasing
 
-Push or merge to `main`. The release workflow tests on all three systems, bumps the patch version (commit `vX.Y.Z [skip ci]` plus a tag), builds every installer into a draft, and publishes it only if all builds succeed. For a minor or major bump use **Actions → Release → Run workflow**. Pushes that only change docs (`*.md`, `docs/`) don't release.
+Merge to `main` (it's protected: pull requests need the maintainer's approval and green CI). The release workflow tests on all three systems, takes the newest `v*` tag and bumps the patch version, pushes only that new tag (never a commit, so `main` stays protected), builds every installer with that version into a draft, and publishes it only if all builds succeed. For a minor or major bump use **Actions → Release → Run workflow**. Pushes that only change docs (`*.md`, `docs/`, `LICENSE`) don't release.

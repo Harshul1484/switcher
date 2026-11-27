@@ -1,13 +1,13 @@
 name: Release
 # Every push to main (and the "Run workflow" button, which can pick a minor/major bump):
 #   1. test on Windows, macOS and Linux - any failure stops here, nothing is released
-#   2. bump the version, commit it to main and tag it
+#   2. next version = newest v* tag, bumped; push only that tag (no commit to main, so main can stay protected)
 #   3. build all installers into one draft release (created first, so parallel uploads can't race to create it)
 #   4. publish the release once every platform built - installed copies then update themselves
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**', '.github/CODEOWNERS', '.github/ISSUE_TEMPLATE/**']
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', '.github/CODEOWNERS', '.github/ISSUE_TEMPLATE/**']
   workflow_dispatch:
     inputs:
       bump:
@@ -44,8 +44,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.bump.outputs.tag }}
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all tags, to find the newest version
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -54,15 +57,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUMP: ${{ inputs.bump || 'patch' }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          npm version "$BUMP" --no-git-tag-version
-          TAG="v$(node -p "require('./package.json').version")"
-          git commit -am "$TAG [skip ci]"
+          LAST=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          LAST=${LAST#v}
+          [ -n "$LAST" ] || LAST=$(node -p "require('./package.json').version")
+          VERSION=$(node -e 'const [a,b,c]=process.argv[1].split(".").map(Number), t=process.argv[2];
+            console.log(t==="major" ? `${a+1}.0.0` : t==="minor" ? `${a}.${b+1}.0` : `${a}.${b}.${c+1}`)' "$LAST" "$BUMP")
+          TAG="v$VERSION"
           git tag "$TAG"
-          git push origin HEAD:main "$TAG"
-          gh release create "$TAG" --draft --verify-tag --title "Switcher ${TAG#v}" --generate-notes
+          git push origin "$TAG"
+          gh release create "$TAG" --draft --verify-tag --title "Switcher $VERSION" --generate-notes
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
@@ -83,6 +88,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
       - run: npm ci
+      - name: Stamp the release version into the app
+        run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npx electron-builder --publish always
         env:
           GH_TOKEN: ${{ github.token }}
