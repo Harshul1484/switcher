@@ -1,10 +1,23 @@
-const { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu, nativeImage, Notification, globalShortcut, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu, nativeImage, Notification, globalShortcut, screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const cp = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const core = require('./core');
+
+// Windows launcher for folder accounts: VS Code's claudeCode.claudeProcessWrapper runs `Switcher.exe <claude> <args>`.
+// Start Claude with the account set for the folder it runs in, hand it our pipes, and exit with its code.
+const launch = process.argv.slice(process.defaultApp ? 2 : 1);
+if (process.platform === 'win32' && path.isAbsolute(launch[0] || '') && /^claude(\.exe)?$/i.test(path.basename(launch[0]))) {
+  app.disableHardwareAcceleration();
+  app.setPath('userData', path.join(os.tmpdir(), 'switcher-launcher')); // stay out of the running app's browser profile
+  const dir = core.configDirFor(process.cwd());
+  const child = cp.spawn(launch[0], launch.slice(1), { stdio: 'inherit', windowsHide: true, env: dir ? { ...process.env, CLAUDE_CONFIG_DIR: dir } : process.env });
+  child.on('error', (e) => { process.stderr.write(`Switcher couldn't start Claude Code: ${e.message}\n`); app.exit(1); });
+  child.on('exit', (code) => app.exit(code ?? 1));
+  return; // CommonJS module: skip the app below
+}
 
 // Apps started from the macOS Dock/Finder or a Linux app menu don't get the login shell's PATH, so `claude`
 // (in ~/.local/bin, Homebrew, npm's bin...) wouldn't be found. Ask the user's shell once, plus the usual install dirs.
@@ -189,7 +202,7 @@ function rebuildTray() {
     { label: profiles.length ? 'Use account' : 'No accounts yet', enabled: false },
     ...profiles.map((p) => ({
       label: labelOf(p) + (lastUsage[p.name] ? `   ${usageText(lastUsage[p.name])}` : '') + (p.name === best && !p.active ? '  (most left)' : ''),
-      type: 'radio', checked: p.active,
+      type: 'radio', checked: p.active, enabled: !p.folders.length, // folder accounts can't be the active login
       click: () => useAccount(p.name).catch((e) => { notify(e.message); rebuildTray(); }),
     })),
     { type: 'separator' },
@@ -222,7 +235,9 @@ function setLoginItem(on) {
   app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] });
 }
 
-const settingsForUI = () => ({ ...core.getSettings(), loginSupported: app.isPackaged });
+// The value for VS Code's claudeCode.claudeProcessWrapper; empty in a Windows dev run (the bare Electron binary can't be it).
+const launcher = () => (process.platform !== 'win32' ? core.launcherFile() : app.isPackaged ? process.execPath : '');
+const settingsForUI = () => ({ ...core.getSettings(), loginSupported: app.isPackaged, launcher: launcher() });
 async function applySettings(patch) {
   const prev = core.getSettings();
   const next = core.setSettings(patch); // validates
@@ -242,6 +257,14 @@ const api = {
   remove: async (name) => { await core.remove(name); changed(); },
   meta: (m) => { core.setAccountMeta(m); changed(); },
   reorder: (order) => { core.reorder(order); changed(); },
+  bind: async (name) => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choose a folder', buttonLabel: 'Use this folder', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const folder = core.bind(r.filePaths[0], name);
+    changed();
+    return folder;
+  },
+  unbind: (folder) => { core.unbind(folder); changed(); },
   best: core.bestAccount,
   sessions: core.getSessions, setSessions: core.setSessions,
   settings: settingsForUI, setSettings: applySettings,
@@ -283,6 +306,7 @@ else {
     const s = core.getSettings();
     registerShortcut(s.shortcut);
     setLoginItem(s.startAtLogin); // re-applied each start, so the path stays right after updates
+    try { core.refreshFolders(); } catch {} // links setup files added to ~/.claude since, rewrites the launcher
     rebuildTray();
     setInterval(rebuildTray, 60e3); // picks up accounts added in the main window
     core.keepSessions();

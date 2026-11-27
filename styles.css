@@ -116,6 +116,12 @@ button.link { background: transparent; border-color: transparent; padding: 0 8px
 .teal { --label: var(--label-teal); }
 .stone { --label: var(--label-stone); }
 
+/* Folder accounts: where an account is used, as removable chips under its email */
+.row > div .folders { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font: 400 13px/1.4 var(--sans); color: var(--muted); }
+.folder { display: inline-flex; align-items: center; padding: 1px 2px 1px 10px; border-radius: 9999px; background: var(--pill); color: var(--ink); }
+.folder button.link { height: 22px; padding: 0 7px; font-size: 15px; }
+.pane-intro { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+
 /* Card ⋯ menu */
 .row { position: relative; }
 button.more { padding: 0 10px; font-size: 18px; letter-spacing: 1px; }
@@ -185,6 +191,9 @@ body.traypop { display: block; height: auto; padding: 6px; border: 1px solid var
 #accounts li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
 #accounts li:hover, #accounts li:focus-visible { background: var(--pill); outline: none; }
 #accounts li.empty { color: var(--muted); cursor: default; }
+#accounts li.locked { cursor: default; }
+#accounts li.locked:hover { background: transparent; }
+.traypop .folder-badge::before { display: none; }
 .ring { flex: none; width: 38px; height: 38px; stroke: none; } /* not the outline style of the nav icons */
 .ring circle { fill: none; stroke-width: 3.5; }
 .ring .track { stroke: var(--track); }

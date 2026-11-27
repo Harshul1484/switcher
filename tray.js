@@ -34,16 +34,19 @@ function row(p) {
   const u = usage[p.name];
   const week = u ? Math.round(u.week.pct) : null;
   const said = u ? `${labelOf(p)}: session ${Math.round(u.session.pct)}% used, this week ${week}% used` : labelOf(p);
+  const folder = p.folders?.length > 0; // a folder account is never the active login, so it can't be picked here
   return el('li', {
-    role: 'option', ariaSelected: String(p.active), ariaLabel: said, title: said, tabIndex: 0,
-    onclick: () => pick(p),
-    onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(p); } },
+    role: 'option', ariaSelected: String(p.active), ariaDisabled: String(folder), ariaLabel: said, title: said, tabIndex: folder ? -1 : 0,
+    className: folder ? 'locked' : '',
+    onclick: () => folder || pick(p),
+    onkeydown: (e) => { if (!folder && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(p); } },
   },
   ring(u),
   el('div', { className: 'who' },
     el('div', { className: 'name' }, el('span', { textContent: labelOf(p) }),
       p.active ? el('span', { className: 'badge', textContent: 'Active' })
-        : p.name === best ? el('span', { className: 'badge best', textContent: 'Most left' }) : ''),
+        : folder ? el('span', { className: 'badge folder-badge', textContent: 'Folder' })
+          : p.name === best ? el('span', { className: 'badge best', textContent: 'Most left' }) : ''),
     el('div', { className: 'week' }, 'Week',
       el('progress', { max: 100, value: week ?? 0, className: week >= 80 ? 'high' : '' }),
       el('span', { textContent: week == null ? '–' : `${week}%` }))));
