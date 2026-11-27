@@ -71,7 +71,8 @@ main { padding: 32px; overflow-y: auto; background: var(--soft); }
   body { display: block; height: auto; }
   aside { border-right: 0; }
 }
-h1 { margin: 0; font: 500 40px/1.1 var(--serif); letter-spacing: -0.02em; }
+h1 { display: flex; align-items: center; gap: 12px; margin: 0; font: 500 40px/1.1 var(--serif); letter-spacing: -0.02em; }
+.brand-mark { width: 36px; height: 36px; flex: none; }
 #active { margin: 4px 0 32px; color: var(--muted); font-size: 14px; }
 h2 { margin: 0 0 8px; font: 500 12px/1.4 var(--sans); letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 

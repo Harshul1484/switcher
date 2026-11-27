@@ -15,7 +15,9 @@ An Electron desktop app (Windows, macOS, Linux) that stores several Claude Code 
 | `preload.js` | Exposes `window.call(fn, arg)` over IPC, and `window.onEvent` for the `changed` and `quick-open` events. |
 | `renderer.js` | The UI: renders accounts, polls usage and session status, card menu (rename, pin, colour, reorder), settings. |
 | `quick.html`, `quick.js` | The quick switcher window opened by the global shortcut. |
-| `assets/` | Tray icons (`trayTemplate*.png` is the macOS menu-bar template image). |
+| `assets/` | Shipped with the app: tray icons (`trayTemplate*.png` is the macOS menu-bar template image), `icon.png` (Linux window and notification icon) and `logo.svg` (the sidebar header). |
+| `build/` | Installer and app icons: `icon.icns` (macOS), `icon.ico` (Windows), `icons/` (Linux). Not shipped inside the app. |
+| `docs/logo/` | Logo masters and exports; see DESIGN.md → Logo. |
 | `index.html`, `styles.css` | Markup and the design tokens and components (see DESIGN.md). |
 | `core.test.js` | `node:test` suite with a fake home directory, fake `fetch` and fake `child_process.spawn`. |
 | `.github/workflows/ci.yml` | Branches and pull requests: test and package on all three systems. |

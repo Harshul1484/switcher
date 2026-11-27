@@ -10,6 +10,28 @@ Switcher's look: warm, calm and quiet, in the spirit of Claude's own interface. 
 - **The same on every system.** Fonts are bundled and the scrollbar is styled, so Windows, macOS and Linux look identical.
 - **Follow the OS theme.** Light and dark switch with the system setting; there's no in-app toggle.
 
+## Logo
+
+An S on a rounded coral tile. The masters are in [`docs/logo/`](docs/logo/); every icon the app ships is made from them.
+
+| File | Use |
+|---|---|
+| `logo.svg` | App icon master on the macOS icon grid (an 824 tile on 1024). Source of `build/icon.icns` and `build/icon.png` |
+| `logo-tile.svg` | The tile with no margin: the sidebar header (`assets/logo.svg`), the Windows `.ico`, the Linux icons and the lockups |
+| `logo-tile-black.svg`, `logo-tile-white.svg` | One colour, with the S cut out: print, embossing, anywhere only one ink is available |
+| `logo-mark.svg`, `logo-mark-black.svg`, `logo-mark-white.svg` | The S alone, in coral or one colour |
+| `lockup-light.svg`, `lockup-dark.svg` | Tile and "Switcher" (Cormorant Garamond 500, outlined) for light and dark backgrounds |
+| `png/` | PNG exports: the tile from 16 to 1024 px, the S at 512, both lockups |
+| `social-preview.png` | GitHub social preview, 1280×640 |
+| `glass-light.png`, `glass-dark.png` | The README header illustration. Not a logo version: don't use it as an icon |
+
+- **Colours**: tile coral `#cc785c`, S cream `#faf9f5`. The wordmark is `--ink` on light and cream on dark.
+- **Where it appears**: Windows `build/icon.ico` (taskbar, Start menu, installer, notifications), macOS `build/icon.icns` (Dock, Finder, notifications), Linux `build/icons/` (app menus) and `assets/icon.png` (window and notification icon), the tray (`assets/tray*.png`, the coral S; `trayTemplate*.png`, a black S that macOS recolours for the menu bar), and the sidebar header.
+- **Lockup**: the wordmark's caps are 0.55 of the tile's height and centred on it, a quarter of a tile away.
+- **Clear space**: a quarter of the tile on every side.
+- **Minimum size**: the tile at 16 px, the lockup at 120 px wide.
+- **Don't** recolour the tile (except the one-colour files), add shadows, outlines or effects, stretch or rotate it, put it on coral, or set the wordmark in another font.
+
 ## Colour
 
 All colours are CSS custom properties on `:root`, redefined for dark mode under `@media (prefers-color-scheme: dark)`. Use the token, never a hex value.

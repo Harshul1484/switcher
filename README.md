@@ -116,7 +116,7 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: every 
 | | |
 |---|---|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, and the rules for pull requests |
-| [DESIGN.md](DESIGN.md) | The design system: colours, type, components |
+| [DESIGN.md](DESIGN.md) | The design system: logo, colours, type, components |
 | [AGENTS.md](AGENTS.md) | Guide for AI coding agents working on this repo |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability privately |
 
