@@ -1,6 +1,6 @@
 {
   "name": "switcher",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "private": true,
   "description": "Switch between Claude Code accounts with one click",
   "author": "Switcher",
@@ -30,8 +30,20 @@
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] },
-        { "target": "zip", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "category": "public.app-category.developer-tools",
       "identity": "-",
@@ -41,7 +53,12 @@
       "artifactName": "Switcher-${arch}.${ext}"
     },
     "linux": {
-      "target": ["AppImage", "deb", "rpm", "pacman"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm",
+        "pacman"
+      ],
       "category": "Development",
       "executableName": "switcher",
       "maintainer": "Harshul1484 <Harshul1484@users.noreply.github.com>",
