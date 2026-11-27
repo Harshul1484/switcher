@@ -36,7 +36,7 @@ Switcher updates itself: it checks GitHub Releases at launch and every 4 hours, 
 ## Caveats
 
 - Built against Claude Code 2.1.332. It relies on Claude Code's file formats and undocumented endpoints, which can change.
-- Used day to day on Windows. The macOS (Keychain) and Linux paths are built and tested in CI, but haven't been used day to day.
+- Used day to day on Windows. Linux builds pass the full test suite in CI; macOS builds are produced and signed in CI, but the macOS Keychain switching isn't covered by the automated tests. Neither has been used day to day yet.
 - Use it with your own accounts and within Anthropic's terms.
 
 ## Develop
