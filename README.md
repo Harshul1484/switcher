@@ -44,6 +44,7 @@ See every account's session and weekly usage, and keep a 5-hour window running o
 - **Lives in the tray.** Closing the window keeps Switcher in the system tray (menu bar on macOS). Its popup shows every account's session (a ring with the % used) and this week (a bar), and switches with one click. Optionally starts when you log in.
 - **Notifications.** A heads-up when an account reaches 80% of its weekly limit, runs out, or gets its session back, and when a login expires.
 - **Most left.** The account with the most usage left is marked, so you know which one to switch to.
+- **Folder accounts.** Give a project folder its own account: Claude Code in VS Code always uses it there, whichever account is active.
 - **Yours to arrange.** Rename accounts, give them a colour, pin them to the top, and drag to reorder.
 - **Safe by design.** Credentials are backed up before every switch, never leave your machine except to Anthropic, and are never logged.
 - **Updates itself.** New versions download in the background; one click installs them.
@@ -91,6 +92,8 @@ You also need the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 
 
 If a card can't load usage, **Reconnect** retries, or reopens sign-in when the login has expired. Each card's **⋯** menu renames, pins, colours, moves or removes the account.
 
+**Folder accounts**: in an account's **⋯** menu choose **Use in a folder…** and pick the project folder. Then, once, copy the launcher from **Settings → Folder accounts** into VS Code's *Claude Process Wrapper* setting (`claudeCode.claudeProcessWrapper`) and reload the window. A folder account can't also be the active account (two live copies of one login would sign each other out), and `claude` in a terminal keeps using the active account.
+
 **Settings** also has start at login (installed app only), notifications, and the quick switcher shortcut: click the field and press the new combination, or **Turn off**.
 
 ## How it works
@@ -98,6 +101,7 @@ If a card can't load usage, **Reconnect** retries, or reopens sign-in when the l
 - Each account lives in `~/.claude-profiles/<name>/`, with its own `.credentials.json` and `.claude.json`.
 - Switching replaces only the login (`claudeAiOauth` in `~/.claude/.credentials.json`, or the `Claude Code-credentials` Keychain item on macOS) and the account info (`oauthAccount` in `~/.claude.json`).
 - Credentials are backed up to `~/.claude-profiles/.backups/` before every switch.
+- A folder account runs from its profile folder. Your own setup in `~/.claude` (settings, `CLAUDE.md`, agents, commands, skills, plugins, hooks and session history) is linked into it, so nothing goes missing; the login, policy limits and remote settings stay per account. Switcher never refreshes a folder account's login: Claude Code does that.
 - Usage comes from Anthropic, using each account's own token, at most every 10 minutes per account. Switcher remembers the last answer, and backs off when Anthropic asks it to.
 
 ## Privacy
@@ -130,6 +134,7 @@ Pushes to any branch build and test on Windows, macOS and Linux ([ci.yml](.githu
 
 - Built against Claude Code 2.1.332. It relies on Claude Code's file formats and undocumented endpoints, which can change.
 - Used day to day on Windows. Linux passes the full test suite in CI; the macOS Keychain switching isn't covered by automated tests yet.
+- Folder accounts on Windows: VS Code starts Claude through Switcher.exe, which adds about half a second. Clear the *Claude Process Wrapper* setting before uninstalling Switcher. User-scope MCP servers (`claude mcp add --scope user`) aren't shared into folder accounts; project `.mcp.json` servers work.
 - Use it with your own accounts and within Anthropic's terms.
 
 ## License

@@ -84,6 +84,7 @@ function cardMenu(p, i) {
   return el('div', { className: 'menu', role: 'menu', ariaLabel: `Actions for ${labelOf(p)}`, onclick: (e) => e.stopPropagation() },
     item('Rename', () => { editing = p.name; draft = labelOf(p); openMenu = null; render(); }),
     item(p.pinned ? 'Unpin' : 'Pin to top', () => meta({ name: p.name, pinned: !p.pinned })),
+    item('Use in a folder…', () => bindFolder(p), !p.ready),
     el('div', { className: 'swatches', role: 'group', ariaLabel: 'Colour label' },
       ...['', ...COLORS].map((c) => el('button', {
         type: 'button', className: `swatch ${c || 'none'}${(p.color || '') === c ? ' on' : ''}`,
@@ -95,6 +96,23 @@ function cardMenu(p, i) {
     item('Move down', () => move(i, 1), !sameGroup(i + 1)),
     item('Remove', () => remove(p.name), false, 'danger'));
 }
+
+// --- folder accounts: Claude Code in VS Code uses this account in a folder, whichever is active ---
+const baseName = (f) => f.split(/[\\/]/).filter(Boolean).pop() || f;
+async function bindFolder(p) {
+  openMenu = null;
+  render();
+  const folder = await run('bind', p.name);
+  if (!folder) return; // cancelled, or the error is already shown
+  say(`${labelOf(p)} now runs in ${baseName(folder)}. Finish setup in Settings → Folder accounts.`);
+  refresh();
+}
+async function unbindFolder(f) {
+  await run('unbind', f);
+  refresh();
+}
+const folderChip = (p, f) => el('span', { className: 'folder', title: f }, baseName(f),
+  el('button', { type: 'button', className: 'link', textContent: '×', ariaLabel: `Stop using ${labelOf(p)} in ${baseName(f)}`, onclick: () => unbindFolder(f) }));
 
 async function meta(m) {
   openMenu = null;
@@ -135,7 +153,8 @@ function card(p, i) {
     p.color ? el('span', { className: `dot ${p.color}`, ariaHidden: 'true' }) : '', title,
     plan ? el('span', { className: 'plan', textContent: plan }) : '',
     p.pinned ? el('span', { className: 'plan', textContent: 'pinned' }) : '',
-    el('small', { textContent: p.ready ? [p.email, p.org].filter(Boolean).join(' · ') : 'Waiting for login in the terminal window...' }));
+    el('small', { textContent: p.ready ? [p.email, p.org].filter(Boolean).join(' · ') : 'Waiting for login in the terminal window...' }),
+    p.folders.length ? el('div', { className: 'folders' }, 'Used in', ...p.folders.map((f) => folderChip(p, f))) : '');
   const more = button('⋯', (e) => { e.stopPropagation(); openMenu = openMenu === p.name ? null : p.name; render(); }, 'link more');
   more.ariaLabel = `More actions for ${labelOf(p)}`;
   more.setAttribute('aria-haspopup', 'menu');
@@ -143,7 +162,7 @@ function card(p, i) {
   const li = el('li', { draggable: !editing },
     el('div', { className: 'row' }, info,
       p.name === best && !p.active ? el('span', { className: 'badge best', textContent: 'Most left' }) : '',
-      p.active ? el('span', { className: 'badge', textContent: 'Active' }) : p.ready ? button('Use', () => use(p.name)) : '',
+      p.active ? el('span', { className: 'badge', textContent: 'Active' }) : p.ready && !p.folders.length ? button('Use', () => use(p.name)) : '',
       more, openMenu === p.name ? cardMenu(p, i) : ''),
     p.ready ? usageBlock(p.name) : '',
     p.ready ? managerLine(p.name) : '');
@@ -241,6 +260,9 @@ function showSettings() {
   $('startAtLogin').disabled = !settings.loginSupported;
   $('notify').checked = settings.notify;
   if (document.activeElement !== $('shortcut')) $('shortcut').value = prettyKey(settings.shortcut);
+  $('launcher').value = settings.launcher || '';
+  $('copyLauncher').disabled = !settings.launcher;
+  if (!settings.launcher) $('launcherHint').textContent = 'Works in the installed app.';
 }
 
 async function loadSettings() {
@@ -262,6 +284,11 @@ async function saveSettings(patch) {
 $('startAtLogin').onchange = () => saveSettings({ startAtLogin: $('startAtLogin').checked });
 $('notify').onchange = () => saveSettings({ notify: $('notify').checked });
 $('clearShortcut').onclick = () => saveSettings({ shortcut: '' });
+$('copyLauncher').onclick = async () => {
+  await navigator.clipboard.writeText($('launcher').value);
+  $('copyLauncher').textContent = 'Copied';
+  setTimeout(() => ($('copyLauncher').textContent = 'Copy'), 1500);
+};
 $('shortcut').onfocus = () => { $('shortcut').value = 'Press a key combination...'; };
 $('shortcut').onblur = showSettings;
 $('shortcut').onkeydown = (e) => {

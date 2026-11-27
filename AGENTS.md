@@ -41,6 +41,7 @@ npm run dist   # installers for the current OS into dist/
 - **Usage** (`usage`): `GET api.anthropic.com/api/oauth/usage`, at most every 10 minutes per account. Answers are cached in `~/.claude-profiles/.usage-cache.json` (numbers only); after a 429 it waits for `Retry-After`. The active account reuses Claude Code's own `cachedUsageUtilization` when fresh.
 - **Session manager** (`keepSessions`): every 5 minutes, accounts with no running window and weekly limit left get the starting message via `claude -p --model haiku --tools ""`. The active account runs from the default location; others from their profile directory.
 - **Config** lives in `~/.claude-profiles/.switcher.json`: session manager (`autoStart`, `message`), `settings` (`startAtLogin`, `notify`, `shortcut`, `trayHintShown`), `accounts` (per-name `label`, `color`, `pinned`) and `order`. Labels are display only; the folder name stays the account's identity.
+- **Folder accounts** (`projects` in the config: folder → account): VS Code's `claudeCode.claudeProcessWrapper` points at our launcher, which sets `CLAUDE_CONFIG_DIR` to the account's profile for the folder Claude starts in (the deepest match wins; `configDirFor`). On macOS/Linux the launcher is `~/.claude-profiles/claude-launcher.sh`, rewritten by `refreshFolders`; on Windows it's Switcher.exe itself (the branch at the top of `main.js`), since VS Code can't start a script there. `refreshFolders` also links the user's own `~/.claude` setup (the `SHARED` list) into bound profiles; never add account or organisation files to that list.
 - **Tray and shortcut**: closing the window hides it to the tray; **Quit** is in the tray menu. The shortcut (an Electron accelerator, empty = off) opens the quick switcher. A single-instance lock brings the window back when the app is launched again.
 - **Notifications** (`watchUsage`, every 5 minutes): `usageAlerts` compares the last two usage readings and fires only when a threshold is crossed. `bestAccount` picks the account with the most left (lower of session and weekly headroom).
 - **Errors** are typed by name (`Offline`, `Expired`, `Limited`); the name survives IPC and the UI shows **Reconnect** for them.
@@ -49,7 +50,7 @@ npm run dist   # installers for the current OS into dist/
 ## Invariants (never break these)
 
 1. **Tokens never leave the machine** except to `api.anthropic.com` and `platform.claude.com`. No logging, printing, telemetry or new endpoints.
-2. **Never refresh the active login.** Only Claude Code may refresh the login it's using; doing it here rotates the refresh token and logs Claude Code out.
+2. **Never refresh the active login or a folder account's login.** Only Claude Code may refresh a login it's using; doing it here rotates the refresh token and logs Claude Code out. For the same reason a folder account can never be made the active login, and the active account can't get a folder.
 3. **Back up before changing credentials**, and write credential files with `writeAtomic` (temporary file, then rename).
 4. **Swap only `claudeAiOauth` and `oauthAccount`.** Every other key in those files belongs to Claude Code.
 5. **Token-touching operations go through `serial()`**, so a refresh never races a switch.

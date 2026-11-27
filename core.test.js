@@ -299,3 +299,86 @@ test('notifications fire only when a threshold is crossed', () => {
   assert.deepEqual(kinds(r(100, 50), r(3, 50)), ['sessionReset']);
   assert.match(core.usageAlerts('work', r(90, 50), r(100, 50))[0].text, /^work reached its session limit\. It resets in 1 hr \d+ min\.$/);
 });
+
+test('folder accounts: the deepest folder wins, the active account and whole drives are refused, they block switching, remove cleans up', fileOnly, async () => {
+  const c = fresh();
+  const live = { expiresAt: Date.now() + 864e5 };
+  for (const [n, id] of [['work', 'W'], ['client', 'C'], ['me', 'M']]) put(`.claude-profiles/${n}/.credentials.json`, { claudeAiOauth: oauth(id, n, live) });
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('M', 'me', live) }); // "me" is active
+  const proj = path.join(home, 'code', 'proj'), inner = path.join(proj, 'vendor', 'sdk');
+  fs.mkdirSync(inner, { recursive: true });
+  const dirOf = (n) => path.join(home, '.claude-profiles', n);
+
+  assert.equal(c.bind(proj, 'work'), proj);
+  c.bind(inner, 'client');
+  assert.equal(c.configDirFor(path.join(proj, 'src')), dirOf('work'));
+  assert.equal(c.configDirFor(path.join(inner, 'lib')), dirOf('client'), 'the deepest folder wins');
+  assert.equal(c.configDirFor(proj + '-other'), null, 'a sibling with the same prefix is not inside');
+  assert.equal(c.configDirFor(home), null, 'elsewhere: the active login');
+  if (process.platform === 'win32') assert.equal(c.configDirFor(proj.toUpperCase()), dirOf('work'), 'Windows paths ignore case');
+
+  assert.throws(() => c.bind(proj, 'me'), /active account/);
+  assert.throws(() => c.bind(path.parse(home).root, 'work'), /not a whole drive/);
+  assert.throws(() => c.bind(path.join(home, 'missing'), 'work'), /isn't a folder/);
+  assert.throws(() => c.bind('relative', 'work'), /Choose a folder/);
+  await assert.rejects(c.use('work'), /Remove its folders first/, 'two live copies of one login would log each other out');
+  assert.deepEqual(c.list().profiles.find((p) => p.name === 'work').folders, [proj]);
+
+  c.bind(proj, 'client'); // a folder has one account
+  assert.deepEqual(c.list().profiles.find((p) => p.name === 'work').folders, []);
+  c.unbind(inner);
+  assert.equal(c.configDirFor(inner), dirOf('client'), 'still inside proj');
+  await c.remove('client');
+  assert.equal(c.configDirFor(proj), null);
+  assert.deepEqual(j('.claude-profiles/.switcher.json').projects, {});
+});
+
+test('folder accounts share your Claude Code setup, never the login or org files; removing one keeps the originals', fileOnly, async () => {
+  const c = fresh();
+  put('.claude-profiles/work/.credentials.json', { claudeAiOauth: oauth('W', 'w', { expiresAt: Date.now() + 864e5 }) });
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('M', 'me') });
+  put('.claude/settings.json', { theme: 'dark' });
+  put('.claude/policy-limits.json', { org: 'someone else' });
+  put('.claude/projects/p/session.jsonl', { keep: true });
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'mine');
+  const prof = path.join(home, '.claude-profiles', 'work');
+  c.bind(fs.mkdtempSync(path.join(home, 'proj-')), 'work');
+
+  assert.equal(fs.readFileSync(path.join(prof, 'CLAUDE.md'), 'utf8'), 'mine');
+  assert.deepEqual(j('.claude-profiles/work/settings.json'), { theme: 'dark' });
+  assert.ok(fs.existsSync(path.join(prof, 'projects', 'p', 'session.jsonl')), 'sessions are shared, so VS Code still lists them');
+  assert.ok(!fs.existsSync(path.join(prof, 'policy-limits.json')), 'organisation files stay per account');
+  assert.equal(j('.claude-profiles/work/.credentials.json').claudeAiOauth.accessToken, 'w', 'its own login is untouched');
+
+  await c.remove('work');
+  assert.ok(!fs.existsSync(prof));
+  assert.deepEqual(j('.claude/projects/p/session.jsonl'), { keep: true }, 'removing the profile drops only the links');
+  assert.equal(fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'), 'mine');
+});
+
+test("usage never refreshes a folder account's login (Claude Code does that in its folder)", fileOnly, async () => {
+  const c = fresh();
+  put('.claude-profiles/work/.credentials.json', { claudeAiOauth: oauth('W', 'w-old', { expiresAt: 0 }) });
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('M', 'me', { expiresAt: Date.now() + 864e5 }) });
+  c.bind(fs.mkdtempSync(path.join(home, 'proj-')), 'work');
+  const calls = [];
+  global.fetch = async (url) => { calls.push(url); return new Response('{}'); };
+  await assert.rejects(c.usage('work'), /once Claude Code runs in its folder/);
+  assert.deepEqual(calls, [], 'no token refresh, no usage call with a dead token');
+  assert.equal(j('.claude-profiles/work/.credentials.json').claudeAiOauth.refreshToken, 'w-old');
+});
+
+test('the shell launcher (macOS/Linux) sets CLAUDE_CONFIG_DIR only inside a folder account', { skip: process.platform !== 'linux' }, () => {
+  const c = fresh();
+  put('.claude-profiles/work/.credentials.json', { claudeAiOauth: oauth('W', 'w', { expiresAt: Date.now() + 864e5 }) });
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('M', 'me') });
+  const proj = fs.mkdtempSync(path.join(home, "it's a proj-")); // a quote in the path
+  fs.mkdirSync(path.join(proj, 'src'));
+  c.bind(proj, 'work');
+  const env = { ...process.env };
+  delete env.CLAUDE_CONFIG_DIR;
+  const run = (cwd) => require('child_process').execFileSync(c.launcherFile(), ['sh', '-c', 'printf %s "${CLAUDE_CONFIG_DIR:-none}"'],
+    { cwd, env: { ...env, PWD: cwd }, encoding: 'utf8' });
+  assert.equal(run(path.join(proj, 'src')), path.join(home, '.claude-profiles', 'work'));
+  assert.equal(run(home), 'none');
+});

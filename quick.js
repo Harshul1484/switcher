@@ -49,7 +49,7 @@ async function load() {
   $('foot').textContent = HINT;
   $('q').value = '';
   $('q').focus();
-  try { items = (await window.call('list')).profiles.filter((p) => p.ready); } catch { items = []; }
+  try { items = (await window.call('list')).profiles.filter((p) => p.ready && !p.folders.length); } catch { items = []; } // folder accounts can't be switched to
   sel = Math.max(0, items.findIndex((p) => !p.active)); // start on the first account you'd switch to
   render();
   for (const p of items) { // cached by core: no extra requests to Anthropic

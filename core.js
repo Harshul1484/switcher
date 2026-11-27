@@ -109,7 +109,7 @@ const readJsonStr = (s) => { try { return JSON.parse(s); } catch { return null; 
 function list() {
   fs.mkdirSync(root(), { recursive: true, mode: 0o700 });
   const activeKey = keyOf(activeOauth());
-  const { accounts = {}, order = [] } = readConfig();
+  const { accounts = {}, order = [], projects = {} } = readConfig();
   const profiles = names().map((name) => {
     const p = loadProfile(name);
     const m = accounts[name] || {};
@@ -118,6 +118,7 @@ function list() {
       label: m.label || '',
       color: m.color || '',
       pinned: !!m.pinned,
+      folders: foldersOf(name, projects),
       ready: !!p,
       email: p?.account?.emailAddress || '',
       org: p?.account?.organizationName || '',
@@ -141,9 +142,9 @@ function startLogin(name) {
 
 // Opens a terminal running `cmd` for this profile. Returns the same command for running by hand
 // (shown on Linux, where there may be no terminal app we know).
+const shq = (s) => `'${s.replace(/'/g, `'\\''`)}'`; // POSIX shell single-quoting
 function openTerminal(configDir, cmd) {
-  const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
-  const manual = `CLAUDE_CONFIG_DIR=${q(configDir)} ${cmd}`;
+  const manual = `CLAUDE_CONFIG_DIR=${shq(configDir)} ${cmd}`;
   if (process.platform === 'win32') {
     // `start` opens a new console window; it inherits CLAUDE_CONFIG_DIR from env.
     cp.spawn('cmd.exe', ['/c', 'start', '"Claude login"', 'cmd', '/c', `"${cmd} & pause"`],
@@ -190,6 +191,8 @@ function syncBack(oauth) {
 function use(name) {
   checkName(name);
   if (!loadProfile(name)) throw new Error(`"${name}" has no saved login yet.`);
+  const folders = foldersOf(name);
+  if (folders.length) throw new Error(`${name} is used in ${folders.map((f) => path.basename(f)).join(', ')}. Remove its folders first.`);
   const cur = readActiveCreds();
   const curCreds = cur ? parseObj(cur.raw, 'Current credentials') : {};
   if (MAC && cur && !curCreds.claudeAiOauth) throw new Error('Keychain credentials are in a format Switcher does not know; nothing was changed.');
@@ -219,9 +222,11 @@ function remove(name) {
   delete usageCache[name];
   delete lastSeen[name];
   saveUsageCache();
-  const { accounts = {}, order = [] } = readConfig();
+  const { accounts = {}, order = [], projects = {} } = readConfig();
   delete accounts[name];
-  writeConfig({ accounts, order: order.filter((n) => n !== name) });
+  for (const f of foldersOf(name, projects)) delete projects[f];
+  writeConfig({ accounts, order: order.filter((n) => n !== name), projects });
+  refreshFolders();
 }
 
 // Sign an existing account in again. The dead login is dropped first, so the card waits for the new one.
@@ -293,6 +298,8 @@ async function fetchUsage(name) {
   if (!oauth) throw new Error(`"${name}" has no saved login yet.`);
   const active = activeOauth();
   const isActive = keyOf(oauth) && keyOf(active) === keyOf(oauth);
+  const inFolders = foldersOf(name).length > 0; // Claude Code runs this login from its profile and refreshes it there
+  if (inFolders && MAC) oauth = readJsonStr(kcRead(serviceFor(profileDir(name)))?.raw)?.claudeAiOauth || oauth; // its live copy
   if (isActive) {
     // Claude Code owns the active login: use its freshest token and never refresh it ourselves (that would log it out).
     // Claude Code also keeps this account's usage on disk; reuse it when fresh instead of asking Anthropic again.
@@ -307,6 +314,10 @@ async function fetchUsage(name) {
   if (c?.data && now - c.at < USAGE_GAP) return c.data;
   if (c?.retryAt > now) return staleOrThrow(c);
   if (!isActive && expired(oauth)) {
+    if (inFolders) { // refreshing here would log out the Claude Code sessions using it
+      if (c?.data) return { ...c.data, stale: c.at };
+      throw new Error('Usage shows once Claude Code runs in its folder again.');
+    }
     oauth = await refresh(oauth);
     writeAtomic(f, JSON.stringify({ ...saved, claudeAiOauth: oauth })); // the old refresh token is now dead; save at once
   }
@@ -332,7 +343,8 @@ async function fetchUsage(name) {
 function bestAccount() {
   const now = Date.now(), live = (w) => !!w.resetsAt && Date.parse(w.resetsAt) > now;
   const left = (u) => Math.min(live(u.session) ? 100 - u.session.pct : 100, u.week.resetsAt && !live(u.week) ? 100 : 100 - u.week.pct);
-  const scored = list().profiles.filter((p) => p.ready && lastSeen[p.name]).map((p) => ({ p, left: left(lastSeen[p.name]) }));
+  // Folder accounts can't be switched to, so they're never suggested.
+  const scored = list().profiles.filter((p) => p.ready && !p.folders.length && lastSeen[p.name]).map((p) => ({ p, left: left(lastSeen[p.name]) }));
   if (scored.length < 2) return null;
   scored.sort((a, b) => b.left - a.left || b.p.active - a.p.active);
   return scored[0].left > 0 ? scored[0].p.name : null;
@@ -396,6 +408,75 @@ function reorder(order) {
   if (!Array.isArray(order)) throw new Error('Order must be a list of account names.');
   order.forEach(checkName);
   writeConfig({ order: [...new Set(order)] });
+}
+
+// --- folder accounts: Claude Code for VS Code uses one account in a folder and everything inside it ---
+// VS Code starts Claude through our launcher (its claudeCode.claudeProcessWrapper setting), which sets CLAUDE_CONFIG_DIR
+// from the folder Claude starts in. That makes the profile's login live, so a folder account can't also be the active
+// login (two live copies of one refresh token log each other out), and Switcher never refreshes it.
+const norm = (p) => (process.platform === 'linux' ? p : p.toLowerCase()); // Windows and macOS ignore case by default
+const foldersOf = (name, projects = readConfig().projects || {}) => Object.keys(projects).filter((f) => projects[f] === name);
+
+// The profile folder for a working directory, or null for the active login. The deepest matching folder wins.
+function configDirFor(cwd) {
+  const projects = readConfig().projects || {};
+  const here = norm(path.resolve(cwd));
+  const hit = Object.keys(projects).sort((a, b) => b.length - a.length)
+    .find((f) => here === norm(f) || here.startsWith(norm(f) + path.sep));
+  return hit ? profileDir(projects[hit]) : null;
+}
+
+function bind(folder, name) {
+  checkName(name);
+  if (typeof folder !== 'string' || !path.isAbsolute(folder)) throw new Error('Choose a folder.');
+  const f = path.resolve(folder);
+  if (path.parse(f).root === f) throw new Error('Choose a project folder, not a whole drive.');
+  if (!fs.statSync(f, { throwIfNoEntry: false })?.isDirectory()) throw new Error(`${f} isn't a folder.`);
+  const p = loadProfile(name);
+  if (!p) throw new Error(`"${name}" has no saved login yet.`);
+  const activeKey = keyOf(activeOauth());
+  if (activeKey && keyOf(p.oauth) === activeKey) throw new Error(`${name} is the active account. Switch to another one first.`);
+  const projects = readConfig().projects || {};
+  for (const k of Object.keys(projects)) if (norm(k) === norm(f)) delete projects[k]; // a folder has one account
+  projects[f] = name;
+  writeConfig({ projects });
+  refreshFolders();
+  return f;
+}
+
+function unbind(folder) {
+  const projects = readConfig().projects || {};
+  for (const k of Object.keys(projects)) if (norm(k) === norm(String(folder))) delete projects[k];
+  writeConfig({ projects });
+  refreshFolders();
+}
+
+// Your own Claude Code setup and session history, linked into folder accounts' profiles so nothing goes missing there and
+// VS Code still lists their sessions. Login, policy limits and remote settings belong to an account or organisation: not shared.
+const SHARED = ['settings.json', 'CLAUDE.md', 'keybindings.json', 'agents', 'commands', 'skills', 'plugins', 'hooks', 'output-styles',
+  'projects', 'history.jsonl', 'file-history', 'todos', 'plans', 'session-env', 'shell-snapshots', 'paste-cache', 'sessions', 'ide'];
+function shareSetup(dir) {
+  for (const e of SHARED) {
+    const from = path.join(os.homedir(), '.claude', e), to = path.join(dir, e);
+    const st = fs.statSync(from, { throwIfNoEntry: false });
+    if (!st || fs.lstatSync(to, { throwIfNoEntry: false })) continue; // never replace what's already there
+    // shortcut: without Windows Developer Mode a file gets a hard link, which goes stale if Claude Code replaces the file; upgrade if that bites
+    try { fs.symlinkSync(from, to, st.isDirectory() ? 'junction' : 'file'); } catch (err) { if (!st.isFile()) throw err; fs.linkSync(from, to); }
+  }
+}
+
+// Re-links the shared setup (new files in ~/.claude) and rewrites the macOS/Linux launcher: a shell script with the folders
+// baked in. Windows can't start a script from VS Code, so there Switcher.exe itself is the launcher (see main.js).
+const launcherFile = () => path.join(root(), 'claude-launcher.sh');
+function refreshFolders() {
+  const projects = readConfig().projects || {};
+  for (const name of new Set(Object.values(projects))) if (fs.existsSync(profileDir(name))) shareSetup(profileDir(name));
+  if (process.platform === 'win32') return;
+  const cases = Object.keys(projects).sort((a, b) => b.length - a.length)
+    .map((f) => `  ${shq(f)}|${shq(f)}/*) CLAUDE_CONFIG_DIR=${shq(profileDir(projects[f]))}; export CLAUDE_CONFIG_DIR ;;`);
+  writeAtomic(launcherFile(), ['#!/bin/sh', '# Written by Switcher: starts Claude Code with the account set for the folder it runs in.',
+    'case "$PWD" in', ...cases, 'esac', 'exec "$@"', ''].join('\n'));
+  fs.chmodSync(launcherFile(), 0o755);
 }
 
 // --- session manager: keeps a 5-hour window running on every account ---
@@ -479,4 +560,5 @@ const api = { use: serial(use), remove: serial(remove), relogin: serial(relogin)
 module.exports = {
   list, startLogin, ...api, retryUsage, getSessions, setSessions, keepSessions,
   getSettings, setSettings, setAccountMeta, reorder, bestAccount, usageAlerts, LABEL_COLORS,
+  bind, unbind, configDirFor, refreshFolders, launcherFile,
 };

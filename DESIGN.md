@@ -94,6 +94,7 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 | **Active badge** | `--pill` fill, round, 13px text, a 6px green dot before "Active" |
 | **Most left chip** | Like the Active badge, but transparent with a 1px coral outline and a coral dot. Marks the account with the most usage left |
 | **Colour dot** | 10px circle before the account name, filled with a `--label-*` token; absent when no label is set |
+| **Folder chip** | Under an account's email: "Used in" in `--muted`, then one `--pill` chip per folder (folder name, full path on hover) with a × link button to remove it |
 | **Card menu** | Opened by the **⋯** link button: `--card` fill, hairline border, 12px radius, the menu shadow. Items are 34px rows with `--pill` on hover; **Remove** is `--error` |
 | **Settings dialog** | Modal, up to 860×560, 16px radius, `--card` fill, backdrop ink at 45%. Header: "Settings" (17px / 500) and a close button. Left: a 220px section list on `--soft`, 38px items, the current one on `--pill`. Right: the section title (16px / 500), then rows of label (15px; optional 13px `--muted` line under it) on the left and the control on the right, hairlines between rows. Opens from the sidebar or Ctrl/Cmd+,; Esc or a backdrop click closes it. Under 640px the section list becomes a row on top |
 | **Switch** | A checkbox with `role="switch"`: 38×22 round track, `--field-line` when off, `--primary` when on, 16px white knob |
