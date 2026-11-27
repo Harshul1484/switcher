@@ -48,10 +48,7 @@ npm test       # core tests (fake home dir, fake network)
 npm run dist   # build installers for the system you're on into dist/
 ```
 
-Every push runs the tests and builds all installers on Windows, macOS and Linux in GitHub Actions (downloadable from the run for 7 days).
+GitHub Actions does the rest:
 
-To release:
-
-1. Bump `version` in `package.json`, commit and push.
-2. Run `npm run release`. It tags the pushed commit `v<version>`; GitHub Actions then builds Windows, macOS and Linux into one **draft** release.
-3. When all three builds are done, edit the notes and publish the draft (on GitHub, or `gh release edit vX.Y.Z --draft=false --notes-file notes.md`). Installed copies pick it up within 4 hours, or at their next launch.
+- **Branches and pull requests** ([ci.yml](.github/workflows/ci.yml)): tests and builds the installers on Windows, macOS and Linux; download them from the run page (kept 7 days).
+- **Releases** ([release.yml](.github/workflows/release.yml)): every push to `main` (except changes to `.md` files only) is tested on all three systems, gets its version bumped (patch: 1.2.3 → 1.2.4) and committed back to `main`, and builds into a release that's published once all three platforms succeed. If anything fails, nothing is published. For a minor or major bump, use **Actions → Release → Run workflow**. Installed copies pick up a new release within 4 hours, or at their next launch.

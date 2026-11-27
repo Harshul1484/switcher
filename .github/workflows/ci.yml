@@ -1,0 +1,43 @@
+name: CI
+# Every push to a branch other than main, and every pull request: run the tests and build the installers on
+# Windows, macOS and Linux. The installers stay on the run page for 7 days for trying out.
+# (Pushes to main release automatically: see release.yml.)
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Linux packaging tools (rpm for .rpm, bsdtar for .pacman)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
+      - run: npm ci
+      - run: npm test
+      - run: npx electron-builder --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: switcher-${{ runner.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pacman

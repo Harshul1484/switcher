@@ -9,8 +9,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist": "electron-builder --publish never",
-    "release": "node release.js"
+    "dist": "electron-builder --publish never"
   },
   "build": {
     "appId": "local.switcher.app",
