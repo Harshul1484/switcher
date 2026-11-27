@@ -178,6 +178,33 @@ input.switch:checked::before { transform: translateX(16px); }
 input.switch:disabled { opacity: 0.45; cursor: default; }
 @media (prefers-reduced-motion: reduce) { input.switch, input.switch::before { transition: none; } }
 
+/* Tray popup: accounts with a session ring (% used in the middle) and a weekly bar */
+body.traypop { display: block; height: auto; padding: 6px; border: 1px solid var(--hairline); background: var(--card); overflow: hidden; user-select: none; }
+.traypop h2 { margin: 6px 10px 4px; }
+#accounts { display: block; margin: 0; max-height: 420px; overflow-y: auto; }
+#accounts li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+#accounts li:hover, #accounts li:focus-visible { background: var(--pill); outline: none; }
+#accounts li.empty { color: var(--muted); cursor: default; }
+.ring { flex: none; width: 38px; height: 38px; stroke: none; } /* not the outline style of the nav icons */
+.ring circle { fill: none; stroke-width: 3.5; }
+.ring .track { stroke: var(--track); }
+.ring .arc { stroke: var(--focus); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 18px 18px; }
+.ring .arc.high { stroke: var(--error); }
+.ring-num { font: 600 11px var(--sans); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.traypop .who { font: inherit; }
+.traypop .name { display: flex; align-items: center; gap: 8px; font: 500 14px/1.3 var(--sans); }
+.traypop .name > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traypop .badge { padding: 1px 8px; font-size: 11px; }
+.week { display: flex; align-items: center; gap: 8px; margin-top: 5px; color: var(--muted); font-size: 12px; }
+.week progress { flex: 1; height: 4px; }
+.week span { min-width: 3.5ch; text-align: right; }
+.traypop hr { margin: 6px 4px; border: 0; border-top: 1px solid var(--hairline); }
+.pop-row { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 400 14px var(--sans); text-align: left; cursor: pointer; }
+.pop-row:hover { background: var(--pill); }
+.pop-row kbd { font: 400 12px var(--sans); color: var(--muted); }
+.pop-err { margin: 4px 10px; color: var(--error); font-size: 12px; white-space: normal; }
+.pop-err:empty { display: none; }
+
 /* Quick switcher window */
 body.quick { display: flex; flex-direction: column; gap: 8px; height: 100vh; padding: 12px; border: 1px solid var(--hairline); }
 body.quick #q { flex: none; height: 48px; font-size: 18px; }

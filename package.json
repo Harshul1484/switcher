@@ -24,6 +24,8 @@
       "styles.css",
       "quick.html",
       "quick.js",
+      "tray.html",
+      "tray.js",
       "assets/**"
     ],
     "win": {

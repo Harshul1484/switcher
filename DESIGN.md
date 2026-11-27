@@ -98,6 +98,7 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 | **Settings dialog** | Modal, up to 860×560, 16px radius, `--card` fill, backdrop ink at 45%. Header: "Settings" (17px / 500) and a close button. Left: a 220px section list on `--soft`, 38px items, the current one on `--pill`. Right: the section title (16px / 500), then rows of label (15px; optional 13px `--muted` line under it) on the left and the control on the right, hairlines between rows. Opens from the sidebar or Ctrl/Cmd+,; Esc or a backdrop click closes it. Under 640px the section list becomes a row on top |
 | **Switch** | A checkbox with `role="switch"`: 38×22 round track, `--field-line` when off, `--primary` when on, 16px white knob |
 | **Icons** | 18px line icons, 1.75 stroke, `currentColor`, round caps. Only in navigation: the Settings button and the dialog's section list |
+| **Tray popup** | 340 px frameless window by the tray icon, `--card` fill, hairline border. Rows: a 38 px session ring (`--track` track, coral arc, `--error` from 80%, the % used in 11 px / 600 in the middle), the name with an Active or Most left badge, and a 4 px weekly bar. Below: Quick switcher, Open Switcher, Start at login, Quit |
 | **Quick switcher** | Frameless 560×440 window: a 48px search field, rows with dot, name, email and "Session N% · Week N%", the selected row on `--pill`, and a 12px keyboard hint footer |
 | **Status line** | 14px text under the form; `--error` for errors |
 | **Scrollbar** | 12px slim thumb, round, no arrows; darker on hover, coral while dragging |
