@@ -97,12 +97,18 @@ function openTrayPopup() {
   trayPop.focus();
   trayPop.webContents.send('tray-open');
 }
-// Next to the tray icon: above it for a bottom taskbar, below it for the macOS menu bar; kept on screen.
+// Windows: pinned to the corner by the clock, just off the taskbar, like Windows' own flyouts (the icon may sit in the
+// hidden-icons flyout, which closes as soon as the popup takes focus). macOS: under the menu-bar icon; kept on screen.
 function placeTrayPopup() {
   let b = tray.getBounds();
   if (!b.width) { const p = screen.getCursorScreenPoint(); b = { x: p.x, y: p.y, width: 0, height: 0 }; }
-  const area = screen.getDisplayNearestPoint({ x: b.x, y: b.y }).workArea;
+  const { bounds: full, workArea: area } = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
   const [w, h] = trayPop.getSize();
+  if (process.platform === 'win32') {
+    const gap = 12, left = area.x > full.x, top = area.y > full.y; // where the taskbar is: the clock sits at its far end
+    trayPop.setPosition(left ? area.x + gap : area.x + area.width - w - gap, top ? area.y + gap : area.y + area.height - h - gap);
+    return;
+  }
   const below = b.y < area.y + area.height / 2;
   const x = b.x + b.width / 2 - w / 2, y = below ? b.y + b.height + 6 : b.y - h - 6;
   const clamp = (v, lo, hi) => Math.round(Math.min(Math.max(v, lo), hi));
