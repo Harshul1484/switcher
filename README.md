@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/glass-dark.png">
+  <img alt="Switcher logo: an S made of stacked glass discs" src="docs/logo/glass-light.png" width="120">
+</picture>
+
 # Switcher
 
 **One click between Claude Code accounts.**<br>
