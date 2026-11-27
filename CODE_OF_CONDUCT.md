@@ -16,4 +16,4 @@ Switcher is a small project, and it should be a pleasant place to contribute. Th
 
 ## Enforcement
 
-The maintainer, [Harshul1484](https://github.com/Harshul1484), may edit or remove comments, lock conversations, close issues or pull requests, and block people who break these rules. Report a problem by contacting the maintainer through GitHub. Reports are kept confidential.
+The maintainer, [Harshul Rathod](https://github.com/Harshul1484), may edit or remove comments, lock conversations, close issues or pull requests, and block people who break these rules. Report a problem by contacting the maintainer through GitHub. Reports are kept confidential.
