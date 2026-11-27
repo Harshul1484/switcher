@@ -15,6 +15,8 @@
   --muted: #6c6a64;
   --hairline: #e6dfd8;
   --track: #e6dfd8;
+  --scroll: rgb(20 20 19 / 0.18);
+  --scroll-hover: rgb(20 20 19 / 0.32);
   --field-line: #8e8b82; /* muted-soft: the hairline is too faint (1.2:1) to find the input by */
   --primary: #a9583e; /* spec primary-active: spec coral #cc785c under white text is 3.3:1, below WCAG AA */
   --primary-press: #8f4a34;
@@ -38,12 +40,22 @@
     --muted: #a09d96;
     --hairline: #252320;
     --track: #3d3d3a;
+    --scroll: rgb(250 249 245 / 0.2);
+    --scroll-hover: rgb(250 249 245 / 0.34);
     --field-line: #6c6a64;
     --error: #e57373;
   }
 }
 
 * { box-sizing: border-box; }
+
+/* Slim rounded scrollbar in the palette, no arrow buttons. Electron is Chromium everywhere, so it matches on all OSes. */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb { background: var(--scroll); border: 3px solid transparent; border-radius: 9999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-hover); }
+::-webkit-scrollbar-thumb:active { background-color: var(--focus); }
 /* Landscape: controls in a sidebar, accounts get the width. Each column scrolls on its own. */
 body { margin: 0; height: 100vh; display: grid; grid-template-columns: 340px 1fr; grid-template-rows: 100vh;
   background: var(--canvas); color: var(--ink); font: 400 16px/1.55 var(--sans); }

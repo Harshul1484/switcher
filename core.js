@@ -128,27 +128,36 @@ function startLogin(name) {
   if (loadProfile(name)) throw new Error(`"${name}" already exists.`);
   const dir = profileDir(name);
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  openTerminal(dir, 'claude auth login');
+  return openTerminal(dir, 'claude auth login');
 }
 
+// Opens a terminal running `cmd` for this profile. Returns the same command for running by hand
+// (shown on Linux, where there may be no terminal app we know).
 function openTerminal(configDir, cmd) {
+  const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
+  const manual = `CLAUDE_CONFIG_DIR=${q(configDir)} ${cmd}`;
   if (process.platform === 'win32') {
     // `start` opens a new console window; it inherits CLAUDE_CONFIG_DIR from env.
     cp.spawn('cmd.exe', ['/c', 'start', '"Claude login"', 'cmd', '/c', `"${cmd} & pause"`],
       { env: { ...process.env, CLAUDE_CONFIG_DIR: configDir }, windowsVerbatimArguments: true, windowsHide: true, detached: true, stdio: 'ignore' }).unref();
-    return;
+    return { manual: `set CLAUDE_CONFIG_DIR=${configDir} && ${cmd}` };
   }
-  const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
-  const line = `CLAUDE_CONFIG_DIR=${q(configDir)} ${cmd}; echo; echo 'Done. You can close this window.'`;
+  const line = `${manual}; echo; echo 'Done. You can close this window.'`;
   if (MAC) {
     cp.spawn('osascript', ['-e', `tell application "Terminal" to do script "${line.replace(/[\\"]/g, '\\$&')}"`,
       '-e', 'tell application "Terminal" to activate'], { stdio: 'ignore' });
-    return;
+    return { manual };
   }
   const pick = 'if command -v x-terminal-emulator; then exec x-terminal-emulator -e sh -c "$0";' +
     ' elif command -v gnome-terminal; then exec gnome-terminal -- sh -c "$0";' +
-    ' elif command -v konsole; then exec konsole -e sh -c "$0"; else exec xterm -e sh -c "$0"; fi';
+    ' elif command -v konsole; then exec konsole -e sh -c "$0";' +
+    ' elif command -v qterminal; then exec qterminal -e sh -c "$0";' + // Kali's default
+    ' elif command -v xfce4-terminal; then exec xfce4-terminal -x sh -c "$0";' +
+    ' elif command -v kitty; then exec kitty sh -c "$0";' +
+    ' elif command -v alacritty; then exec alacritty -e sh -c "$0";' +
+    ' else exec xterm -e sh -c "$0"; fi';
   cp.spawn('sh', ['-c', pick, `${line}; read x`], { detached: true, stdio: 'ignore' }).unref();
+  return { manual };
 }
 
 function backup(rawCreds) {
@@ -212,7 +221,7 @@ function relogin(name) {
   fs.rmSync(path.join(dir, '.credentials.json'), { force: true });
   delete usageCache[name];
   saveUsageCache();
-  openTerminal(dir, 'claude auth login');
+  return openTerminal(dir, 'claude auth login');
 }
 
 const expired = (oauth) => oauth.expiresAt < Date.now() + 60e3;

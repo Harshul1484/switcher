@@ -145,11 +145,16 @@ async function use(name) {
   refresh();
 }
 
+// Linux has no standard terminal app, so also show the sign-in command for running by hand.
+const LINUX = navigator.userAgent.includes('Linux');
+const orRunIt = (r) => (LINUX && r?.manual ? `\n\nNo terminal window? Run this in a terminal:\n${r.manual}` : '');
+
 // Offline: just try again. Expired: sign that account in again (the card waits for the new login).
 async function reconnect(name, kind) {
   if (kind === 'Expired') {
-    if ((await run('relogin', name)) === false) return;
-    say(`Sign in to "${name}" again in the terminal window that just opened.`);
+    const r = await run('relogin', name);
+    if (r === false) return;
+    say(`Sign in to "${name}" again in the terminal window that just opened.${orRunIt(r)}`);
   } else if ((await run('retryUsage', name)) === false) return;
   delete usage[name];
   refresh();
@@ -165,9 +170,10 @@ async function remove(name) {
 $('add').onsubmit = async (e) => {
   e.preventDefault();
   const name = $('name').value.trim();
-  if ((await run('add', name)) !== false) {
+  const r = await run('add', name);
+  if (r !== false) {
     $('name').value = '';
-    say(`Finish signing in to "${name}" in the terminal window that just opened.`);
+    say(`Finish signing in to "${name}" in the terminal window that just opened.${orRunIt(r)}`);
   }
   refresh();
 };
