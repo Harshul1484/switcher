@@ -21,7 +21,10 @@
       "core.js",
       "renderer.js",
       "index.html",
-      "styles.css"
+      "styles.css",
+      "quick.html",
+      "quick.js",
+      "assets/**"
     ],
     "win": {
       "target": "nsis"

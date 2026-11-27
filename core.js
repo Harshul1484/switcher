@@ -109,16 +109,24 @@ const readJsonStr = (s) => { try { return JSON.parse(s); } catch { return null; 
 function list() {
   fs.mkdirSync(root(), { recursive: true, mode: 0o700 });
   const activeKey = keyOf(activeOauth());
+  const { accounts = {}, order = [] } = readConfig();
   const profiles = names().map((name) => {
     const p = loadProfile(name);
+    const m = accounts[name] || {};
     return {
       name,
+      label: m.label || '',
+      color: m.color || '',
+      pinned: !!m.pinned,
       ready: !!p,
       email: p?.account?.emailAddress || '',
       org: p?.account?.organizationName || '',
       active: !!p && activeKey !== null && keyOf(p.oauth) === activeKey,
     };
   });
+  // Pinned first, then the user's order, then new accounts by name.
+  const rank = (n) => (order.includes(n) ? order.indexOf(n) : Infinity);
+  profiles.sort((a, b) => b.pinned - a.pinned || rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
   const activeEmail = activeKey && (readJson(activeConfigFile())?.oauthAccount?.emailAddress || 'unknown account');
   return { activeEmail, profiles };
 }
@@ -209,7 +217,11 @@ function remove(name) {
   fs.rmSync(profileDir(name), { recursive: true, force: true });
   delete sessionStatus[name];
   delete usageCache[name];
+  delete lastSeen[name];
   saveUsageCache();
+  const { accounts = {}, order = [] } = readConfig();
+  delete accounts[name];
+  writeConfig({ accounts, order: order.filter((n) => n !== name) });
 }
 
 // Sign an existing account in again. The dead login is dropped first, so the card waits for the new one.
@@ -267,7 +279,13 @@ function retryUsage(name) {
   saveUsageCache();
 }
 
+// The latest reading per account from any source (cache, Claude Code, Anthropic), for the best-account hint.
+const lastSeen = {};
 async function usage(name) {
+  try { return (lastSeen[name] = await fetchUsage(name)); } catch (e) { delete lastSeen[name]; throw e; }
+}
+
+async function fetchUsage(name) {
   checkName(name);
   const f = path.join(profileDir(name), '.credentials.json');
   const saved = readJson(f);
@@ -309,13 +327,83 @@ async function usage(name) {
   return data;
 }
 
-// --- session manager: keeps a 5-hour window running on every account ---
+// Which account to suggest: the most usage left right now (the smaller of session and weekly headroom).
+// Null with fewer than two accounts to compare; ties go to the active account (no switch needed).
+function bestAccount() {
+  const now = Date.now(), live = (w) => !!w.resetsAt && Date.parse(w.resetsAt) > now;
+  const left = (u) => Math.min(live(u.session) ? 100 - u.session.pct : 100, u.week.resetsAt && !live(u.week) ? 100 : 100 - u.week.pct);
+  const scored = list().profiles.filter((p) => p.ready && lastSeen[p.name]).map((p) => ({ p, left: left(lastSeen[p.name]) }));
+  if (scored.length < 2) return null;
+  scored.sort((a, b) => b.left - a.left || b.p.active - a.p.active);
+  return scored[0].left > 0 ? scored[0].p.name : null;
+}
+
+// What changed between two readings of one account that's worth a desktop notification.
+function usageAlerts(label, prev, next) {
+  if (!prev || !next) return []; // first reading after start: nothing to compare yet
+  const day = (iso) => (iso ? new Date(iso).toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : 'the weekly reset');
+  const inTime = (iso) => {
+    if (!iso) return 'soon';
+    const min = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 60e3));
+    return `in ${min >= 60 ? `${Math.floor(min / 60)} hr ` : ''}${min % 60} min`;
+  };
+  const out = [];
+  if (prev.week.pct < 80 && next.week.pct >= 80 && next.week.pct < 100) out.push({ kind: 'week80', text: `${label} has used ${Math.round(next.week.pct)}% of this week's limit.` });
+  if (prev.week.pct < 100 && next.week.pct >= 100) out.push({ kind: 'weekFull', text: `${label} is out of weekly usage until ${day(next.week.resetsAt)}.` });
+  if (prev.session.pct < 100 && next.session.pct >= 100) out.push({ kind: 'sessionFull', text: `${label} reached its session limit. It resets ${inTime(next.session.resetsAt)}.` });
+  if (prev.session.pct >= 100 && next.session.pct < 100) out.push({ kind: 'sessionReset', text: `${label}'s session has reset.` });
+  return out;
+}
+
+// --- config: ~/.claude-profiles/.switcher.json holds the session manager, app settings and account labels ---
 const configFile = () => path.join(root(), '.switcher.json');
+const readConfig = () => readJson(configFile()) || {};
+const writeConfig = (patch) => writeAtomic(configFile(), JSON.stringify({ ...readConfig(), ...patch }, null, 2));
+
+const DEFAULT_SETTINGS = { startAtLogin: false, notify: true, shortcut: 'CommandOrControl+Shift+Alt+S', trayHintShown: false };
+const getSettings = () => ({ ...DEFAULT_SETTINGS, ...readConfig().settings });
+function setSettings(patch = {}) {
+  const next = getSettings();
+  for (const k of ['startAtLogin', 'notify', 'trayHintShown']) if (k in patch) next[k] = !!patch[k];
+  if ('shortcut' in patch) {
+    const s = String(patch.shortcut ?? '');
+    if (s.length > 60 || !/^[\w+\-=[\];',./\\`]*$/.test(s)) throw new Error("That shortcut isn't valid.");
+    next.shortcut = s;
+  }
+  writeConfig({ settings: next });
+  return next;
+}
+
+// Display name, colour label and pin per account. The folder name never changes, so logins and bindings stay put.
+const LABEL_COLORS = ['coral', 'amber', 'green', 'teal', 'stone'];
+function setAccountMeta({ name, label, color, pinned } = {}) {
+  checkName(name);
+  if (!fs.existsSync(profileDir(name))) throw new Error(`"${name}" doesn't exist.`);
+  const accounts = readConfig().accounts || {};
+  const m = { ...accounts[name] };
+  if (label !== undefined) {
+    const l = String(label).trim().slice(0, 40);
+    if (l && l !== name) m.label = l; else delete m.label;
+  }
+  if (color !== undefined) {
+    if (color && !LABEL_COLORS.includes(color)) throw new Error('Unknown colour label.');
+    if (color) m.color = color; else delete m.color;
+  }
+  if (pinned !== undefined) { if (pinned) m.pinned = true; else delete m.pinned; }
+  writeConfig({ accounts: { ...accounts, [name]: m } });
+}
+function reorder(order) {
+  if (!Array.isArray(order)) throw new Error('Order must be a list of account names.');
+  order.forEach(checkName);
+  writeConfig({ order: [...new Set(order)] });
+}
+
+// --- session manager: keeps a 5-hour window running on every account ---
 const sessionStatus = {}; // name -> { at, error? } for the last start attempt
-const getSessions = () => ({ autoStart: false, message: 'hi', ...readJson(configFile()), status: sessionStatus });
+const getSessions = () => { const c = readConfig(); return { autoStart: !!c.autoStart, message: c.message || 'hi', status: sessionStatus }; };
 
 function setSessions({ autoStart, message } = {}) {
-  writeAtomic(configFile(), JSON.stringify({ autoStart: !!autoStart, message: String(message ?? '').trim().slice(0, 500) || 'hi' }));
+  writeConfig({ autoStart: !!autoStart, message: String(message ?? '').trim().slice(0, 500) || 'hi' });
   if (autoStart) keepSessions();
   return getSessions();
 }
@@ -388,4 +476,7 @@ let lock = Promise.resolve();
 const serial = (fn) => (arg) => (lock = lock.then(() => fn(arg), () => fn(arg)));
 const api = { use: serial(use), remove: serial(remove), relogin: serial(relogin), usage: serial(usage), startSession: serial(startSession) };
 
-module.exports = { list, startLogin, ...api, retryUsage, getSessions, setSessions, keepSessions };
+module.exports = {
+  list, startLogin, ...api, retryUsage, getSessions, setSessions, keepSessions,
+  getSettings, setSettings, setAccountMeta, reorder, bestAccount, usageAlerts, LABEL_COLORS,
+};

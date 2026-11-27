@@ -11,9 +11,11 @@ An Electron desktop app (Windows, macOS, Linux) that stores several Claude Code 
 | File | Role |
 |---|---|
 | `core.js` | All credential, usage and session logic. Pure Node, no Electron imports; this is what the tests cover. |
-| `main.js` | Electron main process: login-shell `PATH` fix (macOS/Linux), window, the IPC allowlist (`api`), the session-manager timer, auto-update. |
-| `preload.js` | Exposes one function, `window.call(fn, arg)`, over IPC. |
-| `renderer.js` | The UI: renders accounts, polls usage and session status, handles buttons. |
+| `main.js` | Electron main process: login-shell `PATH` fix (macOS/Linux), window, tray, global shortcut, notifications, start at login, the IPC allowlist (`api`), the session-manager and usage-watch timers, auto-update. |
+| `preload.js` | Exposes `window.call(fn, arg)` over IPC, and `window.onEvent` for the `changed` and `quick-open` events. |
+| `renderer.js` | The UI: renders accounts, polls usage and session status, card menu (rename, pin, colour, reorder), settings. |
+| `quick.html`, `quick.js` | The quick switcher window opened by the global shortcut. |
+| `assets/` | Tray icons (`trayTemplate*.png` is the macOS menu-bar template image). |
 | `index.html`, `styles.css` | Markup and the design tokens and components (see DESIGN.md). |
 | `core.test.js` | `node:test` suite with a fake home directory, fake `fetch` and fake `child_process.spawn`. |
 | `.github/workflows/ci.yml` | Branches and pull requests: test and package on all three systems. |
@@ -35,6 +37,9 @@ npm run dist   # installers for the current OS into dist/
 - **Switching** (`use`): back up, save the outgoing account's rotated tokens to its profile, then replace only `claudeAiOauth` and `oauthAccount`, keeping every other key (MCP logins, settings, projects).
 - **Usage** (`usage`): `GET api.anthropic.com/api/oauth/usage`, at most every 10 minutes per account. Answers are cached in `~/.claude-profiles/.usage-cache.json` (numbers only); after a 429 it waits for `Retry-After`. The active account reuses Claude Code's own `cachedUsageUtilization` when fresh.
 - **Session manager** (`keepSessions`): every 5 minutes, accounts with no running window and weekly limit left get the starting message via `claude -p --model haiku --tools ""`. The active account runs from the default location; others from their profile directory.
+- **Config** lives in `~/.claude-profiles/.switcher.json`: session manager (`autoStart`, `message`), `settings` (`startAtLogin`, `notify`, `shortcut`, `trayHintShown`), `accounts` (per-name `label`, `color`, `pinned`) and `order`. Labels are display only; the folder name stays the account's identity.
+- **Tray and shortcut**: closing the window hides it to the tray; **Quit** is in the tray menu. The shortcut (an Electron accelerator, empty = off) opens the quick switcher. A single-instance lock brings the window back when the app is launched again.
+- **Notifications** (`watchUsage`, every 5 minutes): `usageAlerts` compares the last two usage readings and fires only when a threshold is crossed. `bestAccount` picks the account with the most left (lower of session and weekly headroom).
 - **Errors** are typed by name (`Offline`, `Expired`, `Limited`); the name survives IPC and the UI shows **Reconnect** for them.
 - **Updates**: electron-updater against GitHub Releases. macOS builds aren't Developer-ID signed, so there the button opens the release page.
 
