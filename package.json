@@ -26,7 +26,7 @@
       "target": "nsis"
     },
     "nsis": {
-      "artifactName": "Switcher-Setup-${version}.${ext}"
+      "artifactName": "Switcher-Setup.${ext}"
     },
     "mac": {
       "target": [
@@ -38,7 +38,7 @@
       "hardenedRuntime": false
     },
     "dmg": {
-      "artifactName": "Switcher-${version}-${arch}.${ext}"
+      "artifactName": "Switcher-${arch}.${ext}"
     },
     "linux": {
       "target": ["AppImage", "deb", "rpm", "pacman"],
@@ -48,7 +48,16 @@
       "synopsis": "Switch between Claude Code accounts with one click"
     },
     "appImage": {
-      "artifactName": "Switcher-${version}-${arch}.${ext}"
+      "artifactName": "Switcher-${arch}.${ext}"
+    },
+    "deb": {
+      "artifactName": "switcher_${arch}.${ext}"
+    },
+    "rpm": {
+      "artifactName": "switcher.${arch}.${ext}"
+    },
+    "pacman": {
+      "artifactName": "switcher.${ext}"
     },
     "publish": {
       "provider": "github",
