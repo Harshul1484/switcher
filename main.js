@@ -25,6 +25,9 @@ const LINK_ONLY = process.platform === 'darwin';
 const RELEASE_PAGE = 'https://github.com/Harshul1484/switcher/releases/tag/v';
 const MAC = process.platform === 'darwin';
 const preload = path.join(__dirname, 'preload.js');
+// Windows and macOS take the app icon from the installed app (build/icon.ico, build/icon.icns); Linux windows and
+// notifications need it passed in.
+const linuxIcon = process.platform === 'linux' ? { icon: path.join(__dirname, 'assets', 'icon.png') } : {};
 const bg = () => (nativeTheme.shouldUseDarkColors ? '#181715' : '#faf9f5');
 const labelOf = (p) => p.label || p.name;
 const pretty = (acc) => acc.split('+').map((k) => ({ CommandOrControl: MAC ? 'Cmd' : 'Ctrl', Alt: MAC ? 'Option' : 'Alt' }[k] || k)).join('+');
@@ -36,7 +39,7 @@ let update = {}; // { state: 'downloading' | 'ready', version }
 function createWindow(show) {
   win = new BrowserWindow({
     width: 1080, height: 700, minWidth: 420, minHeight: 480, show, autoHideMenuBar: true, title: 'Switcher',
-    backgroundColor: bg(), webPreferences: { preload },
+    backgroundColor: bg(), webPreferences: { preload }, ...linuxIcon,
   });
   win.loadFile('index.html');
   // Closing hides to the tray, so the session manager and notifications keep running. Quit is in the tray menu.
@@ -85,7 +88,7 @@ function changed() {
 const showing = new Set(); // keep them referenced, or their click handler can be garbage-collected
 function notify(body) {
   if (!core.getSettings().notify || !Notification.isSupported()) return;
-  const n = new Notification({ title: 'Switcher', body });
+  const n = new Notification({ title: 'Switcher', body, ...linuxIcon });
   showing.add(n);
   n.on('click', showWindow);
   n.on('close', () => showing.delete(n));

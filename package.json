@@ -57,6 +57,7 @@
       "artifactName": "Switcher-${arch}.${ext}"
     },
     "linux": {
+      "icon": "build/icons",
       "target": [
         "AppImage",
         "deb",
