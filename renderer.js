@@ -228,15 +228,17 @@ function showSettings() {
 
 async function loadSettings() {
   try { settings = await window.call('settings'); showSettings(); } catch {}
-  $('settingsHint').textContent = settings.loginSupported === false ? 'Start at login works in the installed app.' : '';
+  $('loginHint').textContent = settings.loginSupported === false ? 'Works in the installed app.' : '';
 }
 
+const SHORTCUT_HINT = $('settingsHint').textContent;
+const shortcutHint = (text = SHORTCUT_HINT, err = false) => { $('settingsHint').textContent = text; $('settingsHint').classList.toggle('err', err); };
 async function saveSettings(patch) {
   try {
     settings = await window.call('setSettings', patch);
-    $('settingsHint').textContent = '';
+    shortcutHint();
   } catch (e) {
-    $('settingsHint').textContent = clean(e);
+    shortcutHint(clean(e), true);
   }
   showSettings();
 }
@@ -252,9 +254,31 @@ $('shortcut').onkeydown = (e) => {
   const key = codeKey(e.code);
   if (!key) return; // only a modifier so far
   const mods = [(MAC ? e.metaKey : e.ctrlKey) && 'CommandOrControl', MAC && e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter(Boolean);
-  if (!mods.some((m) => m !== 'Shift')) { $('settingsHint').textContent = `Include ${mod} or ${MAC ? 'Option' : 'Alt'} in the shortcut.`; return; }
+  if (!mods.some((m) => m !== 'Shift')) return shortcutHint(`Include ${mod} or ${MAC ? 'Option' : 'Alt'} in the shortcut.`, true);
   saveSettings({ shortcut: [...mods, key].join('+') }).then(() => $('shortcut').blur());
 };
+
+// --- settings dialog: sections on the left, like Claude's ---
+const dialog = $('settingsDialog');
+function showPane(id) {
+  for (const b of document.querySelectorAll('.nav-item')) {
+    const on = b.dataset.pane === id;
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    $(b.dataset.pane).hidden = !on;
+  }
+}
+function openSettings() {
+  if (dialog.open) return;
+  dialog.showModal();
+  document.querySelector('.nav-item[aria-current]').focus(); // start on the section, not the close button
+}
+for (const b of document.querySelectorAll('.nav-item')) b.onclick = () => showPane(b.dataset.pane);
+$('openSettings').onclick = openSettings;
+$('closeSettings').onclick = () => dialog.close();
+dialog.onclick = (e) => { if (e.target === dialog) dialog.close(); }; // a click on the backdrop
+dialog.oncancel = (e) => { if (document.activeElement === $('shortcut')) { e.preventDefault(); $('shortcut').blur(); } }; // Esc while recording cancels only that
+$('settingsKey').textContent = `${mod}+,`;
+document.addEventListener('keydown', (e) => { if (e.key === ',' && (MAC ? e.metaKey : e.ctrlKey)) { e.preventDefault(); openSettings(); } });
 
 async function refresh() {
   const d = await run('list');

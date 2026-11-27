@@ -87,11 +87,11 @@ You also need the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 
 
 1. **Add Account**: type a name (an email works). A terminal opens running `claude auth login` in an isolated profile; sign in there.
 2. **Use**: makes that account the one Claude Code runs as. In VS Code, run **Developer: Reload Window** so the extension picks it up.
-3. **Session manager**: tick *Keep a 5-hour session running*, and choose the starting message it sends (with Haiku, no tools) to accounts that have no window running.
+3. **Session manager**: open **Settings** (bottom left, or <kbd>Ctrl</kbd>+<kbd>,</kbd>), turn on *Keep a 5-hour session running*, and choose the starting message it sends (with Haiku, no tools) to accounts that have no window running.
 
 If a card can't load usage, **Reconnect** retries, or reopens sign-in when the login has expired. Each card's **⋯** menu renames, pins, colours, moves or removes the account.
 
-**Settings** has start at login (installed app only), notifications, and the quick switcher shortcut: click the field and press the new combination, or **Turn off**.
+**Settings** also has start at login (installed app only), notifications, and the quick switcher shortcut: click the field and press the new combination, or **Turn off**.
 
 ## How it works
 

@@ -15,29 +15,87 @@
       <button class="primary">Add Account</button>
     </form>
     <p id="msg" aria-live="polite"></p>
-    <h2>Session manager</h2>
-    <section class="panel">
-      <label class="check"><input type="checkbox" id="autoStart"> Keep a 5-hour session running on every account</label>
-      <label for="message">Starting message</label>
-      <input id="message" maxlength="500" placeholder="hi">
-    </section>
-    <details class="panel settings">
-      <summary>Settings</summary>
-      <label class="check"><input type="checkbox" id="startAtLogin"> Start Switcher when I log in</label>
-      <label class="check"><input type="checkbox" id="notify"> Desktop notifications</label>
-      <div class="shortcut-head">
-        <label for="shortcut">Quick switcher shortcut</label>
-        <button type="button" id="clearShortcut" class="link">Turn off</button>
-      </div>
-      <input id="shortcut" readonly autocomplete="off" aria-describedby="settingsHint">
-      <small id="settingsHint" aria-live="polite"></small>
-    </details>
-    <p id="update" class="update" aria-live="polite"></p>
+    <div class="side-foot">
+      <button type="button" id="openSettings" class="side-link" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.99 10.26L21.37 10.44L21.37 13.56L18.99 13.74L18.17 15.71L19.73 17.52L17.52 19.73L15.71 18.17L13.74 18.99L13.56 21.37L10.44 21.37L10.26 18.99L8.29 18.17L6.48 19.73L4.27 17.52L5.83 15.71L5.01 13.74L2.63 13.56L2.63 10.44L5.01 10.26L5.83 8.29L4.27 6.48L6.48 4.27L8.29 5.83L10.26 5.01L10.44 2.63L13.56 2.63L13.74 5.01L15.71 5.83L17.52 4.27L19.73 6.48L18.17 8.29Z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings <kbd id="settingsKey"></kbd>
+      </button>
+      <p id="update" class="update" aria-live="polite"></p>
+    </div>
   </aside>
   <main>
     <h2>Accounts</h2>
     <ul id="list"></ul>
   </main>
+
+  <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+    <header class="dialog-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button type="button" id="closeSettings" class="link close" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="settings-body">
+      <nav class="settings-nav" aria-label="Settings sections">
+        <button type="button" class="nav-item" data-pane="paneSessions" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Session manager
+        </button>
+        <button type="button" class="nav-item" data-pane="paneGeneral">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          General
+        </button>
+        <button type="button" class="nav-item" data-pane="paneShortcut">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h0M10.5 10h0M14 10h0M17 10h0M8 14h8"/></svg>
+          Quick switcher
+        </button>
+      </nav>
+
+      <section id="paneSessions" class="pane" aria-labelledby="paneSessionsTitle">
+        <h3 id="paneSessionsTitle">Session manager</h3>
+        <div class="setting">
+          <label for="autoStart">Keep a 5-hour session running on every account</label>
+          <input type="checkbox" role="switch" class="switch" id="autoStart">
+        </div>
+        <div class="setting">
+          <label for="message">Starting message</label>
+          <input id="message" maxlength="500" placeholder="hi">
+        </div>
+      </section>
+
+      <section id="paneGeneral" class="pane" aria-labelledby="paneGeneralTitle" hidden>
+        <h3 id="paneGeneralTitle">General</h3>
+        <div class="setting">
+          <div>
+            <label for="startAtLogin">Start Switcher when I log in</label>
+            <small id="loginHint"></small>
+          </div>
+          <input type="checkbox" role="switch" class="switch" id="startAtLogin" aria-describedby="loginHint">
+        </div>
+        <div class="setting">
+          <div>
+            <label for="notify">Desktop notifications</label>
+            <small>Usage limits, logins that expire, and updates.</small>
+          </div>
+          <input type="checkbox" role="switch" class="switch" id="notify">
+        </div>
+      </section>
+
+      <section id="paneShortcut" class="pane" aria-labelledby="paneShortcutTitle" hidden>
+        <h3 id="paneShortcutTitle">Quick switcher</h3>
+        <div class="setting">
+          <div>
+            <label for="shortcut">Keyboard shortcut</label>
+            <small id="settingsHint" aria-live="polite">Opens the quick switcher from anywhere. Click the field, then press the keys.</small>
+          </div>
+          <div class="shortcut-field">
+            <input id="shortcut" readonly autocomplete="off" aria-describedby="settingsHint">
+            <button type="button" id="clearShortcut" class="link">Turn off</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </dialog>
   <script src="renderer.js"></script>
 </body>
 </html>
