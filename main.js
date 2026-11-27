@@ -48,7 +48,7 @@ function createWindow(show) {
     e.preventDefault();
     win.hide();
     if (!MAC && !core.getSettings().trayHintShown) {
-      notify('Switcher is still running in the tray. Use Quit there to close it.');
+      notify('Still running in the tray. Quit from there.');
       core.setSettings({ trayHintShown: true });
     }
   });
@@ -130,7 +130,7 @@ async function useAccount(name) {
   changed();
   if (!win?.isFocused()) {
     const p = core.list().profiles.find((x) => x.name === name);
-    notify(`Now using ${p ? labelOf(p) : name}. Reload VS Code so Claude Code picks it up.`);
+    notify(`Now using ${p ? labelOf(p) : name}. Reload VS Code to apply.`);
   }
   return r;
 }
@@ -155,7 +155,7 @@ async function watchUsage() {
     } catch (e) {
       if (e.name === 'Expired' && !expiredSeen.has(p.name)) {
         expiredSeen.add(p.name);
-        notify(`The login for ${labelOf(p)} has expired. Open Switcher to reconnect.`);
+        notify(`${labelOf(p)}'s login expired. Open Switcher to reconnect.`);
       }
     }
   }
@@ -287,12 +287,12 @@ else {
     autoUpdater.autoDownload = !LINK_ONLY;
     autoUpdater.on('update-available', (i) => {
       update = LINK_ONLY ? { state: 'ready', version: i.version } : { state: 'downloading', version: i.version, percent: 0 };
-      if (LINK_ONLY) notify(`Switcher ${i.version} is available. Open Switcher to download it.`);
+      if (LINK_ONLY) notify(`Switcher ${i.version} is available.`); // clicking it opens Switcher
     });
     autoUpdater.on('download-progress', (p) => (update = { ...update, state: 'downloading', percent: p.percent }));
     autoUpdater.on('update-downloaded', (i) => {
       update = { state: 'ready', version: i.version };
-      notify(`Switcher ${i.version} is ready. Open Switcher and click Update, or it installs when you quit.`);
+      notify(`Switcher ${i.version} is ready. It installs when you quit.`);
     });
     autoUpdater.on('error', () => { if (update.state !== 'ready') update = {}; }); // offline: retry next round
     const check = () => autoUpdater.checkForUpdates().catch(() => {});
