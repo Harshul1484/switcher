@@ -8,7 +8,7 @@ Thanks for helping. Switcher handles people's Claude Code logins, so contributio
 2. **Fork and branch.** Fork the repo and create a branch from `main` (for example `fix/usage-countdown`).
 3. **Make the change.** See [Development](#development) and the [rules](#rules) below.
 4. **Open a pull request into `main`.** Fill in the template, including how you tested it and on which systems.
-5. **Review.** Every pull request is reviewed by the maintainer, [Harshul1484](https://github.com/Harshul1484), who is requested automatically. Expect questions or change requests; please answer them in the pull request.
+5. **Review.** Every pull request is reviewed by the maintainer, [Harshul Rathod](https://github.com/Harshul1484), who is requested automatically. Expect questions or change requests; please answer them in the pull request.
 6. **Merge.** Only the maintainer merges, and only after approving the review and after CI has passed on Windows, macOS and Linux. Pull requests that don't get approval are closed with an explanation.
 
 > Merging into `main` publishes a release automatically: the version is bumped, installers are built for all three systems, and every installed copy updates itself. That's why nothing is merged without review.
