@@ -215,3 +215,87 @@ test('a rejected refresh leaves the saved login untouched', fileOnly, async () =
   await assert.rejects(core.usage('d'), /Login expired/);
   assert.equal(j('.claude-profiles/d/.credentials.json').claudeAiOauth.refreshToken, 'd-old');
 });
+
+// --- labels, settings, best-account hint, notification triggers ---
+const fresh = () => { // a clean profiles folder and a fresh copy of core (no cached readings from earlier tests)
+  fs.rmSync(path.join(home, '.claude-profiles'), { recursive: true, force: true });
+  delete require.cache[require.resolve('./core')];
+  return require('./core');
+};
+
+test('labels, colours, pins and order show in the list, are validated, and are cleaned up on remove', fileOnly, async () => {
+  const c = fresh();
+  const live = { expiresAt: Date.now() + 864e5 };
+  for (const [n, id] of [['alpha', 'A1'], ['beta', 'B1'], ['gamma', 'G1']]) put(`.claude-profiles/${n}/.credentials.json`, { claudeAiOauth: oauth(id, n, live) });
+  put('.claude-profiles/.switcher.json', { autoStart: false, message: 'keep me' });
+
+  c.reorder(['gamma', 'alpha', 'beta']);
+  c.setAccountMeta({ name: 'beta', label: 'Work', color: 'teal', pinned: true });
+  const l = c.list().profiles;
+  assert.deepEqual(l.map((p) => p.name), ['beta', 'gamma', 'alpha'], 'pinned first, then the saved order');
+  assert.deepEqual([l[0].label, l[0].color, l[0].pinned], ['Work', 'teal', true]);
+  assert.throws(() => c.setAccountMeta({ name: 'beta', color: 'neon' }), /Unknown colour/);
+  assert.throws(() => c.setAccountMeta({ name: 'nope', label: 'x' }), /doesn't exist/);
+
+  c.setAccountMeta({ name: 'beta', label: '  ', color: '', pinned: false });
+  assert.deepEqual(c.list().profiles.map((p) => [p.name, p.label, p.color, p.pinned]),
+    [['gamma', '', '', false], ['alpha', '', '', false], ['beta', '', '', false]]);
+  assert.equal(c.getSessions().message, 'keep me', 'label changes keep the session manager settings');
+
+  await c.remove('alpha');
+  const cfg = j('.claude-profiles/.switcher.json');
+  assert.ok(!cfg.order.includes('alpha') && !cfg.accounts.alpha);
+  assert.equal(cfg.message, 'keep me');
+});
+
+test('settings have defaults, are validated, and live alongside the session manager config', fileOnly, () => {
+  const c = fresh();
+  assert.deepEqual(c.getSettings(), { startAtLogin: false, notify: true, shortcut: 'CommandOrControl+Shift+Alt+S', trayHintShown: false });
+  c.setSettings({ notify: false, shortcut: 'CommandOrControl+Alt+K' });
+  assert.deepEqual([c.getSettings().notify, c.getSettings().shortcut], [false, 'CommandOrControl+Alt+K']);
+  assert.throws(() => c.setSettings({ shortcut: 'Ctrl+<script>' }), /isn't valid/);
+  c.setSessions({ autoStart: false, message: 'hello' });
+  assert.equal(c.getSettings().notify, false, 'saving the session manager keeps the settings');
+  assert.equal(c.getSessions().message, 'hello');
+});
+
+test('best-account hint: most headroom wins, ties go to the active account, needs two to compare', fileOnly, async () => {
+  const c = fresh();
+  const live = { expiresAt: Date.now() + 864e5 };
+  put('.claude-profiles/x/.credentials.json', { claudeAiOauth: oauth('X', 'x-old', live) });
+  put('.claude-profiles/y/.credentials.json', { claudeAiOauth: oauth('Y', 'y-tok', live) });
+  put('.claude/.credentials.json', { claudeAiOauth: oauth('X', 'x-tok', live) }); // x is active
+  put('.claude.json', {});
+  const at = (ms) => new Date(Date.now() + ms).toISOString();
+  const reply = {
+    'x-tok': { five_hour: { utilization: 70, resets_at: at(36e5) }, seven_day: { utilization: 20, resets_at: at(864e5) } }, // 30 left
+    'y-tok': { five_hour: { utilization: 0, resets_at: null }, seven_day: { utilization: 90, resets_at: at(864e5) } }, // 10 left
+  };
+  global.fetch = async (_url, opts) => new Response(JSON.stringify(reply[opts.headers.Authorization.slice(7)]));
+
+  await c.usage('x');
+  assert.equal(c.bestAccount(), null, 'one account: nothing to compare');
+  await c.usage('y');
+  assert.equal(c.bestAccount(), 'x');
+
+  reply['y-tok'].seven_day.utilization = 70; // 30 left too: a tie goes to the active account
+  c.retryUsage('y');
+  await c.usage('y');
+  assert.equal(c.bestAccount(), 'x');
+
+  reply['y-tok'].seven_day.utilization = 0; // y is completely free
+  c.retryUsage('y');
+  await c.usage('y');
+  assert.equal(c.bestAccount(), 'y');
+});
+
+test('notifications fire only when a threshold is crossed', () => {
+  const r = (s, w) => ({ session: { pct: s, resetsAt: new Date(Date.now() + 65 * 60e3).toISOString() }, week: { pct: w, resetsAt: new Date(Date.now() + 864e5).toISOString() } });
+  const kinds = (a, b) => core.usageAlerts('work', a, b).map((x) => x.kind);
+  assert.deepEqual(kinds(undefined, r(100, 100)), [], 'no alerts for the first reading after start');
+  assert.deepEqual(kinds(r(50, 70), r(60, 85)), ['week80']);
+  assert.deepEqual(kinds(r(50, 85), r(60, 90)), [], 'already past 80%: no repeat');
+  assert.deepEqual(kinds(r(90, 95), r(100, 100)), ['weekFull', 'sessionFull']);
+  assert.deepEqual(kinds(r(100, 50), r(3, 50)), ['sessionReset']);
+  assert.match(core.usageAlerts('work', r(90, 50), r(100, 50))[0].text, /^work reached its session limit\. It resets in 1 hr \d+ min\.$/);
+});

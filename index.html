@@ -21,6 +21,17 @@
       <label for="message">Starting message</label>
       <input id="message" maxlength="500" placeholder="hi">
     </section>
+    <details class="panel settings">
+      <summary>Settings</summary>
+      <label class="check"><input type="checkbox" id="startAtLogin"> Start Switcher when I log in</label>
+      <label class="check"><input type="checkbox" id="notify"> Desktop notifications</label>
+      <div class="shortcut-head">
+        <label for="shortcut">Quick switcher shortcut</label>
+        <button type="button" id="clearShortcut" class="link">Turn off</button>
+      </div>
+      <input id="shortcut" readonly autocomplete="off" aria-describedby="settingsHint">
+      <small id="settingsHint" aria-live="polite"></small>
+    </details>
     <p id="update" class="update" aria-live="polite"></p>
   </aside>
   <main>

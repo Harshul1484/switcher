@@ -1,5 +1,7 @@
 const $ = (id) => document.getElementById(id);
-const mod = navigator.userAgent.includes('Mac') ? 'Cmd' : 'Ctrl';
+const MAC = navigator.userAgent.includes('Mac');
+const mod = MAC ? 'Cmd' : 'Ctrl';
+const COLORS = ['coral', 'amber', 'green', 'teal', 'stone']; // same as core.LABEL_COLORS
 // IPC errors arrive as "Error invoking remote method 'call': <Name>: <message>"; Name is Offline/Expired/Error.
 function parseError(e) {
   const m = String(e.message).match(/^Error invoking remote method 'call': (\w+): ([\s\S]*)$/);
@@ -10,6 +12,10 @@ let data = { activeEmail: null, profiles: [] };
 const usage = {}; // name -> { at, data } | { at, error }
 let loadingUsage = false;
 let sessions = { autoStart: false, message: 'hi', status: {} };
+let settings = {};
+let best = null; // account with the most usage left
+let openMenu = null, editing = null, draft = '', dragName = null;
+const labelOf = (p) => p.label || p.name;
 
 function el(tag, props = {}, ...kids) {
   const e = Object.assign(document.createElement(tag), props);
@@ -27,7 +33,7 @@ async function run(fn, arg) {
   catch (e) { say(clean(e), true); return false; }
 }
 
-const button = (label, onclick, className = '') => el('button', { textContent: label, onclick, className });
+const button = (label, onclick, className = '') => el('button', { type: 'button', textContent: label, onclick, className });
 
 // Same wording as Claude's usage panel.
 function resetText(iso, weekly) {
@@ -68,21 +74,107 @@ function managerLine(name) {
     : el('small', { className: 'manager', textContent: `Session manager started a session at ${time}` });
 }
 
+// --- the ⋯ menu: rename, pin, colour, order, remove ---
+function cardMenu(p, i) {
+  const item = (text, onclick, disabled = false, cls = '') => el('button', {
+    type: 'button', className: `menu-item ${cls}`, textContent: text, disabled, role: 'menuitem',
+    onclick: (e) => { e.stopPropagation(); onclick(); },
+  });
+  const sameGroup = (j) => data.profiles[j] && data.profiles[j].pinned === p.pinned; // order moves within pinned / unpinned
+  return el('div', { className: 'menu', role: 'menu', ariaLabel: `Actions for ${labelOf(p)}`, onclick: (e) => e.stopPropagation() },
+    item('Rename', () => { editing = p.name; draft = labelOf(p); openMenu = null; render(); }),
+    item(p.pinned ? 'Unpin' : 'Pin to top', () => meta({ name: p.name, pinned: !p.pinned })),
+    el('div', { className: 'swatches', role: 'group', ariaLabel: 'Colour label' },
+      ...['', ...COLORS].map((c) => el('button', {
+        type: 'button', className: `swatch ${c || 'none'}${(p.color || '') === c ? ' on' : ''}`,
+        title: c ? `${c[0].toUpperCase()}${c.slice(1)}` : 'No colour', ariaLabel: c ? `${c} label` : 'No colour label',
+        ariaPressed: String((p.color || '') === c),
+        onclick: (e) => { e.stopPropagation(); meta({ name: p.name, color: c }); },
+      }))),
+    item('Move up', () => move(i, -1), !sameGroup(i - 1)),
+    item('Move down', () => move(i, 1), !sameGroup(i + 1)),
+    item('Remove', () => remove(p.name), false, 'danger'));
+}
+
+async function meta(m) {
+  openMenu = null;
+  await run('meta', m);
+  refresh();
+}
+
+async function reorderTo(names) {
+  await run('reorder', names);
+  refresh();
+}
+
+function move(i, dir) {
+  const names = data.profiles.map((x) => x.name);
+  [names[i], names[i + dir]] = [names[i + dir], names[i]];
+  openMenu = null;
+  reorderTo(names);
+}
+
+async function saveRename(p) {
+  if (editing !== p.name) return;
+  editing = null;
+  await run('meta', { name: p.name, label: draft });
+  refresh();
+}
+
+function card(p, i) {
+  const plan = usage[p.name]?.data?.plan;
+  const title = editing === p.name
+    ? el('input', {
+      id: 'rename', className: 'rename', value: draft, maxLength: 40, ariaLabel: `Name for ${p.name}`,
+      oninput: (e) => (draft = e.target.value),
+      onkeydown: (e) => { if (e.key === 'Enter') saveRename(p); if (e.key === 'Escape') { editing = null; render(); } },
+      onblur: () => saveRename(p),
+    })
+    : labelOf(p);
+  const info = el('div', {},
+    p.color ? el('span', { className: `dot ${p.color}`, ariaHidden: 'true' }) : '', title,
+    plan ? el('span', { className: 'plan', textContent: plan }) : '',
+    p.pinned ? el('span', { className: 'plan', textContent: 'pinned' }) : '',
+    el('small', { textContent: p.ready ? [p.email, p.org].filter(Boolean).join(' · ') : 'Waiting for login in the terminal window...' }));
+  const more = button('⋯', (e) => { e.stopPropagation(); openMenu = openMenu === p.name ? null : p.name; render(); }, 'link more');
+  more.ariaLabel = `More actions for ${labelOf(p)}`;
+  more.setAttribute('aria-haspopup', 'menu');
+  more.setAttribute('aria-expanded', String(openMenu === p.name));
+  const li = el('li', { draggable: !editing },
+    el('div', { className: 'row' }, info,
+      p.name === best && !p.active ? el('span', { className: 'badge best', textContent: 'Most left' }) : '',
+      p.active ? el('span', { className: 'badge', textContent: 'Active' }) : p.ready ? button('Use', () => use(p.name)) : '',
+      more, openMenu === p.name ? cardMenu(p, i) : ''),
+    p.ready ? usageBlock(p.name) : '',
+    p.ready ? managerLine(p.name) : '');
+  // Drag to reorder (within pinned / unpinned).
+  li.ondragstart = (e) => { dragName = p.name; e.dataTransfer.effectAllowed = 'move'; li.classList.add('dragging'); };
+  li.ondragend = () => { dragName = null; render(); };
+  li.ondragover = (e) => {
+    const from = data.profiles.find((x) => x.name === dragName);
+    if (from && from.name !== p.name && from.pinned === p.pinned) { e.preventDefault(); li.classList.add('drop'); }
+  };
+  li.ondragleave = () => li.classList.remove('drop');
+  li.ondrop = (e) => {
+    e.preventDefault();
+    const names = data.profiles.map((x) => x.name), from = names.indexOf(dragName);
+    dragName = null;
+    names.splice(from, 1);
+    names.splice(i, 0, data.profiles[from].name);
+    reorderTo(names);
+  };
+  return li;
+}
+
 function render() {
+  if (dragName) return; // rebuilding the list would cancel the drag
+  const act = data.profiles.find((p) => p.active);
   $('active').textContent = data.activeEmail
-    ? `Active: ${data.profiles.find((p) => p.active)?.name ?? 'not saved in Switcher'} (${data.activeEmail})`
+    ? `Active: ${act ? labelOf(act) : 'not saved in Switcher'} (${data.activeEmail})`
     : 'Active: not logged in';
-  $('list').replaceChildren(...data.profiles.map((p) => {
-    const plan = usage[p.name]?.data?.plan;
-    const info = el('div', {}, p.name, plan ? el('span', { className: 'plan', textContent: plan }) : '',
-      el('small', { textContent: p.ready ? [p.email, p.org].filter(Boolean).join(' · ') : 'Waiting for login in the terminal window...' }));
-    const action = p.active ? el('span', { className: 'badge', textContent: 'Active' })
-      : p.ready ? button('Use', () => use(p.name)) : '';
-    return el('li', {},
-      el('div', { className: 'row' }, info, action, button('Remove', () => remove(p.name), 'link')),
-      p.ready ? usageBlock(p.name) : '',
-      p.ready ? managerLine(p.name) : '');
-  }));
+  $('list').replaceChildren(...data.profiles.map(card));
+  const input = $('rename');
+  if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
 }
 
 async function loadSessions() {
@@ -117,12 +209,64 @@ async function saveSessions() {
 $('autoStart').onchange = saveSessions;
 $('message').onchange = saveSessions;
 
+// --- settings: start at login, notifications, quick switcher shortcut ---
+const prettyKey = (acc) => (acc
+  ? acc.split('+').map((k) => ({ CommandOrControl: mod, Control: 'Ctrl', Alt: MAC ? 'Option' : 'Alt' }[k] || k)).join(' + ')
+  : 'Off');
+const KEYS = {
+  Space: 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Backquote: '`', Minus: '-', Equal: '=',
+  BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backslash: '\\',
+};
+const codeKey = (c) => (/^Key[A-Z]$/.test(c) ? c.slice(3) : /^Digit\d$/.test(c) ? c.slice(5) : /^F\d{1,2}$/.test(c) ? c : KEYS[c]);
+
+function showSettings() {
+  $('startAtLogin').checked = settings.startAtLogin;
+  $('startAtLogin').disabled = !settings.loginSupported;
+  $('notify').checked = settings.notify;
+  if (document.activeElement !== $('shortcut')) $('shortcut').value = prettyKey(settings.shortcut);
+}
+
+async function loadSettings() {
+  try { settings = await window.call('settings'); showSettings(); } catch {}
+  $('settingsHint').textContent = settings.loginSupported === false ? 'Start at login works in the installed app.' : '';
+}
+
+async function saveSettings(patch) {
+  try {
+    settings = await window.call('setSettings', patch);
+    $('settingsHint').textContent = '';
+  } catch (e) {
+    $('settingsHint').textContent = clean(e);
+  }
+  showSettings();
+}
+$('startAtLogin').onchange = () => saveSettings({ startAtLogin: $('startAtLogin').checked });
+$('notify').onchange = () => saveSettings({ notify: $('notify').checked });
+$('clearShortcut').onclick = () => saveSettings({ shortcut: '' });
+$('shortcut').onfocus = () => { $('shortcut').value = 'Press a key combination...'; };
+$('shortcut').onblur = showSettings;
+$('shortcut').onkeydown = (e) => {
+  if (e.key === 'Tab') return; // keep keyboard navigation
+  e.preventDefault();
+  if (e.key === 'Escape') return $('shortcut').blur();
+  const key = codeKey(e.code);
+  if (!key) return; // only a modifier so far
+  const mods = [(MAC ? e.metaKey : e.ctrlKey) && 'CommandOrControl', MAC && e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter(Boolean);
+  if (!mods.some((m) => m !== 'Shift')) { $('settingsHint').textContent = `Include ${mod} or ${MAC ? 'Option' : 'Alt'} in the shortcut.`; return; }
+  saveSettings({ shortcut: [...mods, key].join('+') }).then(() => $('shortcut').blur());
+};
+
 async function refresh() {
   const d = await run('list');
   if (d === false) return;
   data = d;
   render();
   loadUsage();
+}
+
+async function loadBest() {
+  try { best = await window.call('best'); } catch { best = null; }
+  render();
 }
 
 // One account at a time; each result renders as soon as it arrives.
@@ -136,12 +280,14 @@ async function loadUsage(force = false) {
     render();
   }
   loadingUsage = false;
+  loadBest();
 }
 
 async function use(name) {
   const r = await run('use', name);
   if (r === false) return;
-  say(`Switched to ${name}. Backup saved to ${r.backupDir}\n\nReload VS Code so Claude Code picks it up: ${mod}+Shift+P → "Developer: Reload Window".`);
+  const p = data.profiles.find((x) => x.name === name);
+  say(`Switched to ${p ? labelOf(p) : name}. Backup saved to ${r.backupDir}\n\nReload VS Code so Claude Code picks it up: ${mod}+Shift+P → "Developer: Reload Window".`);
   refresh();
 }
 
@@ -161,7 +307,9 @@ async function reconnect(name, kind) {
 }
 
 async function remove(name) {
-  if (!confirm(`Remove "${name}"? Its saved login is deleted from this computer.`)) return;
+  openMenu = null;
+  const p = data.profiles.find((x) => x.name === name);
+  if (!confirm(`Remove "${p ? labelOf(p) : name}"? Its saved login is deleted from this computer.`)) return render();
   await run('remove', name);
   delete usage[name];
   refresh();
@@ -178,6 +326,11 @@ $('add').onsubmit = async (e) => {
   refresh();
 };
 
+// Close the ⋯ menu on an outside click or Escape.
+document.addEventListener('click', () => { if (openMenu) { openMenu = null; render(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openMenu) { openMenu = null; render(); } });
+
+window.onEvent('changed', () => { refresh(); loadSettings(); }); // switched from the tray or quick switcher
 setInterval(() => data.profiles.some((p) => !p.ready) && refresh(), 3000);
 setInterval(render, 60e3); // keep "Resets in ..." countdowns current
 setInterval(() => loadUsage(true), 5 * 60e3);
@@ -186,3 +339,4 @@ window.addEventListener('focus', refresh);
 refresh();
 loadSessions();
 loadUpdate();
+loadSettings();

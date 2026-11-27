@@ -32,6 +32,7 @@ All colours are CSS custom properties on `:root`, redefined for dark mode under 
 | `--success` | `#5db872` | `#5db872` | Dot in the **Active** badge |
 | `--error` | `#c64545` | `#e57373` | Errors, usage bars at 80% and above |
 | `--scroll` / `--scroll-hover` | ink at 18% / 32% | cream at 20% / 34% | Scrollbar thumb |
+| `--label-coral` … `--label-stone` | coral `#cc785c`, amber `#e8a55a`, green `#5db872`, teal `#5db8a6`, stone `#8e8b82` | same | Account colour labels, shown only as 10px dots |
 
 Two deliberate deviations from the reference palette, both for accessibility:
 
@@ -59,11 +60,11 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 
 - **Spacing** follows a 4px rhythm: 8, 12, 16, 24 and 32px. Cards have 14–16px padding; columns 24–32px.
 - **Radius**: 8px for buttons and inputs, 12px for cards and panels, fully round (`9999px`) for badges, usage bars and the scrollbar.
-- **Borders**: 1px. Shadows only appear as the input focus glow.
+- **Borders**: 1px. Shadows only appear as the input focus glow and under the floating card menu (`0 8px 24px` ink at 14%), which needs to lift off the card below it.
 
 ## Layout
 
-- **Sidebar** (340px, left): title, active account, **Add Account**, session manager, and the version and update area pinned to the bottom.
+- **Sidebar** (340px, left): title, active account, **Add Account**, session manager, settings, and the version and update area pinned to the bottom.
 - **Accounts** (the rest): one card per account, 12px apart.
 - Each column scrolls on its own. Under 760px wide, it becomes one column.
 
@@ -73,12 +74,16 @@ Fonts are bundled from `@fontsource` (SIL Open Font License), so nothing loads f
 |---|---|
 | **Primary button** | `--primary` fill, white text, 40px tall, 20px side padding. Used once per screen: **Add Account**, or **Update &lt;version&gt;** |
 | **Secondary button** | `--secondary` fill, hairline border, ink text (**Use**, **Reconnect**) |
-| **Link button** | No fill or border, `--muted` text (**Remove**) |
+| **Link button** | No fill or border, `--muted` text (**⋯**, **Turn off**) |
 | **Input** | 40px tall, `--canvas` fill, `--field-line` border; on focus a coral border plus a 3px coral glow at 15% |
 | **Account card** | `--card` fill, hairline border, 12px radius: name and plan, email and organisation, then usage |
 | **Usage meter** | Three columns: label with reset time, a 6px bar, "N% used". The bar is coral, `--error` at 80% or more |
 | **Active badge** | `--pill` fill, round, 13px text, a 6px green dot before "Active" |
-| **Panel** | Like a card; holds the session manager |
+| **Most left chip** | Like the Active badge, but transparent with a 1px coral outline and a coral dot. Marks the account with the most usage left |
+| **Colour dot** | 10px circle before the account name, filled with a `--label-*` token; absent when no label is set |
+| **Card menu** | Opened by the **⋯** link button: `--card` fill, hairline border, 12px radius, the menu shadow. Items are 34px rows with `--pill` on hover; **Remove** is `--error` |
+| **Panel** | Like a card; holds the session manager and the collapsible settings |
+| **Quick switcher** | Frameless 560×440 window: a 48px search field, rows with dot, name, email and "Session N% · Week N%", the selected row on `--pill`, and a 12px keyboard hint footer |
 | **Status line** | 14px text under the form; `--error` for errors |
 | **Scrollbar** | 12px slim thumb, round, no arrows; darker on hover, coral while dragging |
 | **Focus** | 2px coral outline, 2px offset, on every focusable element |

@@ -40,6 +40,11 @@ See every account's session and weekly usage, and keep a 5-hour window running o
 - **One-click switching.** Save each account once; **Use** makes it the one Claude Code runs as. Only the login changes; your settings, MCP servers and project history stay put.
 - **Usage at a glance.** Every account shows its current-session and weekly usage, with live reset countdowns.
 - **Session manager.** Optionally keeps a 5-hour session window running on every account that still has weekly limit left, so the clock is already ticking when you need it.
+- **Quick switcher.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Option</kbd>+<kbd>S</kbd> on macOS) anywhere, type, press Enter. The shortcut is configurable in Settings.
+- **Lives in the tray.** Closing the window keeps Switcher in the system tray (menu bar on macOS), where you can switch accounts too. Optionally starts when you log in.
+- **Notifications.** A heads-up when an account reaches 80% of its weekly limit, runs out, or gets its session back, and when a login expires.
+- **Most left.** The account with the most usage left is marked, so you know which one to switch to.
+- **Yours to arrange.** Rename accounts, give them a colour, pin them to the top, and drag to reorder.
 - **Safe by design.** Credentials are backed up before every switch, never leave your machine except to Anthropic, and are never logged.
 - **Updates itself.** New versions download in the background; one click installs them.
 
@@ -84,7 +89,9 @@ You also need the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 
 2. **Use**: makes that account the one Claude Code runs as. In VS Code, run **Developer: Reload Window** so the extension picks it up.
 3. **Session manager**: tick *Keep a 5-hour session running*, and choose the starting message it sends (with Haiku, no tools) to accounts that have no window running.
 
-If a card can't load usage, **Reconnect** retries, or reopens sign-in when the login has expired.
+If a card can't load usage, **Reconnect** retries, or reopens sign-in when the login has expired. Each card's **⋯** menu renames, pins, colours, moves or removes the account.
+
+**Settings** has start at login (installed app only), notifications, and the quick switcher shortcut: click the field and press the new combination, or **Turn off**.
 
 ## How it works
 
