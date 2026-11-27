@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu, nativeImage, Notification, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, shell, Tray, Menu, nativeImage, Notification, globalShortcut, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const cp = require('child_process');
 const fs = require('fs');
@@ -32,7 +32,7 @@ const bg = () => (nativeTheme.shouldUseDarkColors ? '#181715' : '#faf9f5');
 const labelOf = (p) => p.label || p.name;
 const pretty = (acc) => acc.split('+').map((k) => ({ CommandOrControl: MAC ? 'Cmd' : 'Ctrl', Alt: MAC ? 'Option' : 'Alt' }[k] || k)).join('+');
 
-let win, quick, tray, quitting = false;
+let win, quick, tray, trayPop, trayClosedAt = 0, quitting = false;
 let update = {}; // { state: 'downloading' | 'ready', version }
 
 // --- windows ---
@@ -56,6 +56,7 @@ function createWindow(show) {
 
 function showWindow() {
   quick?.hide();
+  trayPop?.hide();
   if (!win || win.isDestroyed()) return createWindow(true);
   if (win.isMinimized()) win.restore();
   win.show();
@@ -76,6 +77,35 @@ function openQuick() {
   quick.show();
   quick.focus();
   quick.webContents.send('quick-open');
+}
+
+// Tray popup (Windows, macOS): every account with a session ring and a weekly bar, which a native menu can't draw.
+function openTrayPopup() {
+  if (Date.now() - trayClosedAt < 300) return; // this click is the one that just closed it
+  if (!trayPop || trayPop.isDestroyed()) {
+    trayPop = new BrowserWindow({
+      width: 340, height: 460, show: false, frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
+      fullscreenable: false, backgroundColor: bg(), webPreferences: { preload },
+    });
+    trayPop.loadFile('tray.html');
+    trayPop.on('blur', () => { trayPop.hide(); trayClosedAt = Date.now(); });
+  }
+  placeTrayPopup();
+  if (MAC) app.focus({ steal: true });
+  trayPop.show();
+  trayPop.focus();
+  trayPop.webContents.send('tray-open');
+}
+// Next to the tray icon: above it for a bottom taskbar, below it for the macOS menu bar; kept on screen.
+function placeTrayPopup() {
+  let b = tray.getBounds();
+  if (!b.width) { const p = screen.getCursorScreenPoint(); b = { x: p.x, y: p.y, width: 0, height: 0 }; }
+  const area = screen.getDisplayNearestPoint({ x: b.x, y: b.y }).workArea;
+  const [w, h] = trayPop.getSize();
+  const below = b.y < area.y + area.height / 2;
+  const x = b.x + b.width / 2 - w / 2, y = below ? b.y + b.height + 6 : b.y - h - 6;
+  const clamp = (v, lo, hi) => Math.round(Math.min(Math.max(v, lo), hi));
+  trayPop.setPosition(clamp(x, area.x + 8, area.x + area.width - w - 8), clamp(y, area.y + 8, area.y + area.height - h - 8));
 }
 
 // Something changed (switch, label, settings): refresh every window and the tray menu.
@@ -149,11 +179,15 @@ function rebuildTray() {
   try { profiles = core.list().profiles.filter((p) => p.ready); best = core.bestAccount(); } catch {}
   const s = core.getSettings();
   const active = profiles.find((p) => p.active);
-  tray.setToolTip(active ? `Switcher · ${labelOf(active)}` : 'Switcher');
+  const usageText = (u) => (u ? `${Math.round(u.session.pct)}% session · ${Math.round(u.week.pct)}% week` : '');
+  const au = active && usageText(lastUsage[active.name]);
+  tray.setToolTip(active ? `Switcher · ${labelOf(active)}${au ? ` · ${au}` : ''}` : 'Switcher');
+  // Windows and macOS open the popup; Linux trays (AppIndicator) only show a menu, so usage goes in its labels.
+  if (process.platform !== 'linux') return;
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: profiles.length ? 'Use account' : 'No accounts yet', enabled: false },
     ...profiles.map((p) => ({
-      label: labelOf(p) + (p.name === best && !p.active ? '  (most left)' : ''),
+      label: labelOf(p) + (lastUsage[p.name] ? `   ${usageText(lastUsage[p.name])}` : '') + (p.name === best && !p.active ? '  (most left)' : ''),
       type: 'radio', checked: p.active,
       click: () => useAccount(p.name).catch((e) => { notify(e.message); rebuildTray(); }),
     })),
@@ -211,6 +245,10 @@ const api = {
   sessions: core.getSessions, setSessions: core.setSessions,
   settings: settingsForUI, setSettings: applySettings,
   hideQuick: () => quick?.hide(),
+  openQuick: () => { trayPop?.hide(); openQuick(); },
+  hideTray: () => trayPop?.hide(),
+  fitTray: (h) => { if (!trayPop || !Number.isFinite(h)) return; trayPop.setSize(340, Math.round(Math.min(Math.max(h, 120), 640))); placeTrayPopup(); },
+  quit: () => { quitting = true; app.quit(); },
   showMain: showWindow,
   update: () => ({ current: app.getVersion(), ...update }),
   installUpdate: () => (LINK_ONLY ? shell.openExternal(RELEASE_PAGE + update.version) : autoUpdater.quitAndInstall(true, true)), // silent install, then relaunch
@@ -230,7 +268,9 @@ else {
     const hidden = process.argv.includes('--hidden') || (MAC && app.getLoginItemSettings().wasOpenedAtLogin);
     createWindow(!hidden);
     tray = new Tray(trayIcon());
-    if (process.platform === 'win32') tray.on('click', showWindow); // left click opens; right click shows the menu
+    if (process.platform === 'win32') tray.on('click', showWindow); // left click opens; right click shows the popup
+    if (process.platform !== 'linux') tray.on('right-click', openTrayPopup);
+    if (MAC) tray.on('click', openTrayPopup);
     const s = core.getSettings();
     registerShortcut(s.shortcut);
     setLoginItem(s.startAtLogin); // re-applied each start, so the path stays right after updates

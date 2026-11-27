@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <title>Switcher</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="traypop">
+  <h2 id="accountsTitle">Use account</h2>
+  <ul id="accounts" role="listbox" aria-labelledby="accountsTitle"></ul>
+  <p id="err" class="pop-err" aria-live="polite"></p>
+  <hr>
+  <button type="button" class="pop-row" id="quick">Quick switcher <kbd id="quickKey"></kbd></button>
+  <button type="button" class="pop-row" id="open">Open Switcher</button>
+  <hr>
+  <label class="pop-row">Start at login <input type="checkbox" role="switch" class="switch" id="login"></label>
+  <button type="button" class="pop-row" id="quit">Quit Switcher</button>
+  <script src="tray.js"></script>
+</body>
+</html>

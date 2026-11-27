@@ -41,7 +41,7 @@ See every account's session and weekly usage, and keep a 5-hour window running o
 - **Usage at a glance.** Every account shows its current-session and weekly usage, with live reset countdowns.
 - **Session manager.** Optionally keeps a 5-hour session window running on every account that still has weekly limit left, so the clock is already ticking when you need it.
 - **Quick switcher.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Option</kbd>+<kbd>S</kbd> on macOS) anywhere, type, press Enter. The shortcut is configurable in Settings.
-- **Lives in the tray.** Closing the window keeps Switcher in the system tray (menu bar on macOS), where you can switch accounts too. Optionally starts when you log in.
+- **Lives in the tray.** Closing the window keeps Switcher in the system tray (menu bar on macOS). Its popup shows every account's session (a ring with the % used) and this week (a bar), and switches with one click. Optionally starts when you log in.
 - **Notifications.** A heads-up when an account reaches 80% of its weekly limit, runs out, or gets its session back, and when a login expires.
 - **Most left.** The account with the most usage left is marked, so you know which one to switch to.
 - **Yours to arrange.** Rename accounts, give them a colour, pin them to the top, and drag to reorder.
