@@ -10,6 +10,19 @@ Switcher's look: warm, calm and quiet, in the spirit of Claude's own interface. 
 - **The same on every system.** Fonts are bundled and the scrollbar is styled, so Windows, macOS and Linux look identical.
 - **Follow the OS theme.** Light and dark switch with the system setting; there's no in-app toggle.
 
+## Logo
+
+An S in Cormorant Garamond (the app's title face) at the centre of a ripple: a wavy ring, then waves breaking into eight arms. Cream `#faf9f5` on a deep terracotta `#a9583e` tile with 28% rounded corners. The masters are in [`docs/logo/`](docs/logo/).
+
+| File | Use |
+|---|---|
+| `logo.svg` | The full logo (S weight 600). For 48 px and up: Dock, Start menu, app menus, installer, README |
+| `logo-small.svg` | The small version: the wavy ring and a bolder S (weight 700) only. For 32 px and below, where the full ripple turns to texture: tray, taskbar, title bars, the sidebar header (`assets/logo.svg`) |
+| `logo-mark.svg` | The full mark alone, one colour, no tile |
+
+- **Platforms**: `build/icon.ico` (Windows: small version at 16–32 px, full from 48), `build/icon.icns` and `build/icon.png` (macOS, on Apple's icon grid: the tile is 824 of 1024), `build/icons/` (Linux, 16–512), `assets/icon.png` (Linux window and notification icon), `assets/tray*.png` (Windows and Linux tray), `assets/trayTemplate*.png` (macOS menu bar: black ring and S that macOS recolours).
+- **Don't** recolour, outline, stretch or rotate it, add effects, or redraw the S in another font; below 48 px always use the small version.
+
 ## Colour
 
 All colours are CSS custom properties on `:root`, redefined for dark mode under `@media (prefers-color-scheme: dark)`. Use the token, never a hex value.
