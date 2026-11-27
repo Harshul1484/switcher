@@ -44,7 +44,7 @@ npm run dist   # installers for the current OS into dist/
 - **Tray and shortcut**: closing the window hides it to the tray; **Quit** is in the tray menu. The shortcut (an Electron accelerator, empty = off) opens the quick switcher. A single-instance lock brings the window back when the app is launched again.
 - **Notifications** (`watchUsage`, every 5 minutes): `usageAlerts` compares the last two usage readings and fires only when a threshold is crossed. `bestAccount` picks the account with the most left (lower of session and weekly headroom).
 - **Errors** are typed by name (`Offline`, `Expired`, `Limited`); the name survives IPC and the UI shows **Reconnect** for them.
-- **Updates**: electron-updater against GitHub Releases. macOS builds aren't Developer-ID signed, so there the button opens the release page.
+- **Updates**: electron-updater against GitHub Releases, like other desktop apps: checked at start and every hour, downloaded in the background, then "Restart to update" (also installs on quit). Settings → General shows the version and a Check for updates button. macOS builds aren't Developer-ID signed, so there the button opens the release page.
 
 ## Invariants (never break these)
 
