@@ -5,10 +5,9 @@
 **One click between Claude Code accounts.**<br>
 See every account's session and weekly usage, and keep a 5-hour window running on all of them.
 
-[![Latest release](https://img.shields.io/github/v/release/Harshul1484/switcher?style=flat-square&color=cc785c&labelColor=181715&label=release)](https://github.com/Harshul1484/switcher/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/Harshul1484/switcher/release.yml?style=flat-square&labelColor=181715&label=build)](https://github.com/Harshul1484/switcher/actions/workflows/release.yml)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-cc785c?style=flat-square&labelColor=181715)](#install)
-[![License: MIT](https://img.shields.io/badge/license-MIT-cc785c?style=flat-square&labelColor=181715)](LICENSE)
+[![Release build](https://github.com/Harshul1484/switcher/actions/workflows/release.yml/badge.svg)](https://github.com/Harshul1484/switcher/actions/workflows/release.yml)
+[![Platforms: Windows, macOS, Linux](docs/badges/platforms.svg)](#install)
+[![License: MIT](docs/badges/license.svg)](LICENSE)
 
 <br>
 
@@ -21,14 +20,14 @@ See every account's session and weekly usage, and keep a 5-hour window running o
 
 ### Download
 
-[![Windows](https://img.shields.io/badge/Windows-.exe-cc785c?style=for-the-badge&labelColor=181715&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEgMWgxMC41djEwLjVIMXpNMTIuNSAxSDIzdjEwLjVIMTIuNXpNMSAxMi41aDEwLjVWMjNIMXpNMTIuNSAxMi41SDIzVjIzSDEyLjV6Ii8%2BPC9zdmc%2B)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-Setup.exe)
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-cc785c?style=for-the-badge&labelColor=181715&logo=apple&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-arm64.dmg)
-[![macOS Intel](https://img.shields.io/badge/macOS-Intel-cc785c?style=for-the-badge&labelColor=181715&logo=apple&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-x64.dmg)
+[![Download for Windows](docs/badges/windows.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-Setup.exe)
+[![Download for macOS (Apple Silicon)](docs/badges/macos-apple-silicon.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-arm64.dmg)
+[![Download for macOS (Intel)](docs/badges/macos-intel.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-x64.dmg)
 
-[![Ubuntu, Debian, Kali](https://img.shields.io/badge/Ubuntu%20%C2%B7%20Debian%20%C2%B7%20Kali-.deb-cc785c?style=for-the-badge&labelColor=181715&logo=debian&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher_amd64.deb)
-[![Arch](https://img.shields.io/badge/Arch-.pacman-cc785c?style=for-the-badge&labelColor=181715&logo=archlinux&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher.pacman)
-[![Fedora](https://img.shields.io/badge/Fedora-.rpm-cc785c?style=for-the-badge&labelColor=181715&logo=fedora&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher.x86_64.rpm)
-[![AppImage](https://img.shields.io/badge/Any%20Linux-AppImage-cc785c?style=for-the-badge&labelColor=181715&logo=linux&logoColor=white)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-x86_64.AppImage)
+[![Download for Ubuntu, Debian, Kali (.deb)](docs/badges/linux-deb.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher_amd64.deb)
+[![Download for Arch (.pacman)](docs/badges/linux-pacman.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher.pacman)
+[![Download for Fedora (.rpm)](docs/badges/linux-rpm.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/switcher.x86_64.rpm)
+[![Download AppImage (any Linux)](docs/badges/linux-appimage.svg)](https://github.com/Harshul1484/switcher/releases/latest/download/Switcher-x86_64.AppImage)
 
 <sub>Unofficial. Not affiliated with or endorsed by Anthropic. Requires the <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> CLI.</sub>
 
